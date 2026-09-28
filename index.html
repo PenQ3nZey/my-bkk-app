@@ -1,1009 +1,1038 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>BKK Commute & Life Tracker (PWA)</title>
-
-    <!-- iOS PWA Meta Tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="BKK Tracker">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3448/3448339.png">
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            orange: '#FF5722', // Strava vibe
-                            green: '#00A968',  // BTS Sukhumvit vibe
-                            blue: '#1976D2',   // MRT Blue Line vibe
-                            bus: '#D32F2F',    // BMTA Red Bus vibe
-                            dark: '#0F172A',
-                            card: '#1E293B'
-                        }
-                    },
-                    fontFamily: {
-                        kanit: ['Kanit', 'Prompt', 'sans-serif']
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- Leaflet.js CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Google Fonts: Kanit -->
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        body {
-            font-family: 'Kanit', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            overflow: hidden;
-            touch-action: manipulation;
-        }
-
-        #map {
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
-        /* Glassmorphic UI elements */
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.82);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .glass-panel-light {
-            background: rgba(255, 255, 255, 0.88);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-        }
-
-        /* Custom Leaflet pulse marker */
-        .user-location-marker {
-            width: 16px;
-            height: 16px;
-            background-color: #2563EB;
-            border: 3px solid #FFFFFF;
-            border-radius: 50%;
-            box-shadow: 0 0 12px rgba(37, 99, 235, 0.8);
-            animation: pulse-ring 2s infinite;
-        }
-
-        @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
-            70% { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
-        }
-
-        /* Custom vehicle badge icons */
-        .vehicle-badge {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 11px;
-            border-radius: 12px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            border: 2px solid white;
-            transition: all 0.3s ease;
-        }
-
-        /* Hide scrollbars */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        /* Safe area padding for iPhones */
-        .pb-safe {
-            padding-bottom: env(safe-area-inset-bottom, 16px);
-        }
-        .pt-safe {
-            padding-top: env(safe-area-inset-top, 12px);
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06101f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="BKK Ultimate Tracker Google Pro — Google Maps, Places, Transit, Bangkok bus routes, GPS, trip planner, fares and live vehicle adapters.">
+<title>BKK Ultimate Tracker — Google Pro</title>
+<link rel="preconnect" href="https://maps.googleapis.com">
+<link rel="preconnect" href="https://places.googleapis.com">
+<link rel="preconnect" href="https://overpass-api.de">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+<style>
+/* =============================================================
+   BKK ULTIMATE TRACKER — GOOGLE PRO
+   Single-file application. No build step required.
+   ============================================================= */
+:root{
+  --bg:#06101f;--bg2:#0a1628;--card:#0d1b2f;--card2:#10243b;--soft:#142b46;
+  --line:rgba(148,163,184,.18);--line2:rgba(56,189,248,.28);--text:#f8fafc;
+  --muted:#96a8bf;--muted2:#6e829d;--primary:#38bdf8;--primary2:#2563eb;
+  --ok:#22c55e;--warn:#f59e0b;--danger:#ef4444;--purple:#a855f7;
+  --shadow:0 22px 70px rgba(0,0,0,.38);--nav:76px;--header:68px;--radius:18px;
+  color-scheme:dark
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
+body{display:flex;flex-direction:column}
+button,input,select,textarea{font:inherit}button{border:0;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}
+a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #38bdf83d;outline-offset:2px}
+header{z-index:2000;min-height:var(--header);padding:9px 13px max(9px,env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;gap:10px;background:#06101ff0;border-bottom:1px solid var(--line);backdrop-filter:blur(18px)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}.brand-icon{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#0284c7,#7c3aed);box-shadow:0 10px 28px #0284c744}.brand-copy{min-width:0}.brand-main{font-weight:950;font-size:.94rem;white-space:nowrap}.brand-sub{font-size:.61rem;color:var(--muted);margin-top:2px;white-space:nowrap}
+.header-right{display:flex;align-items:center;gap:7px;min-width:0}.status-pill{display:flex;align-items:center;gap:7px;max-width:44vw;padding:7px 10px;border:1px solid var(--line);border-radius:99px;background:#0d1b2fd9;color:var(--warn);font-size:.65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex:0 0 7px}
+main{position:relative;flex:1;min-height:0;overflow:hidden}.panel{position:absolute;inset:0;display:none;overflow:auto;background:radial-gradient(circle at 100% 0,#0ea5e914,transparent 32%),var(--bg)}.panel.active{display:block}.map-panel{overflow:hidden;background:#06101f}
+#map{position:absolute;inset:0;width:100%;height:100%;background:#07111f}.map-fallback{position:absolute;inset:0;display:none;z-index:10}.map-fallback.show{display:block}.map-fallback iframe{width:100%;height:100%;border:0}
+.map-overlay{position:absolute;left:13px;right:13px;z-index:900;pointer-events:none}.map-top{top:12px}.map-bottom{bottom:15px}.search-panel{pointer-events:auto;max-width:820px;margin:auto}.search-shell{display:flex;align-items:center;gap:8px;padding:6px 7px 6px 12px;border:1px solid #38bdf84a;border-radius:17px;background:#06101fec;backdrop-filter:blur(18px);box-shadow:var(--shadow)}.search-shell i{color:var(--primary)}.search-shell input{flex:1;min-width:0;border:0;background:transparent;color:#fff;padding:10px 0;outline:none;font-size:.82rem}.search-shell .btn{min-width:42px}.gmp-slot{flex:1;min-width:0}.gmp-slot:empty{display:none}.gmp-slot gmp-place-autocomplete{width:100%}.fallback-search-input{display:block}.using-google .fallback-search-input{display:none}
+.quick-row{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}.quick-chip{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid var(--line);border-radius:999px;background:#06101fdc;color:#dbeafe;font-size:.65rem}.quick-chip:hover{background:#10243b}.quick-chip b{color:var(--primary)}
+.map-tools{display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}.fab{width:49px;height:49px;display:grid;place-items:center;border-radius:16px;background:#06101feb;border:1px solid var(--line2);color:var(--primary);box-shadow:0 12px 32px #0007}.fab.active{background:linear-gradient(135deg,#0284c7,#2563eb);color:#fff;border-color:transparent}.fab.danger{color:#fecaca}
+.pin-card{display:none;pointer-events:auto;max-width:820px;margin:8px auto 0;padding:10px 12px;border-radius:14px;border:1px solid #38bdf844;background:#06101ff0;backdrop-filter:blur(18px);box-shadow:var(--shadow)}.pin-card.show{display:block}.pin-card b{font-size:.75rem}.pin-card small{display:block;margin-top:4px;color:var(--muted);font-size:.63rem}
+.map-hud{pointer-events:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-width:820px;margin:auto}.hud-card{padding:9px;border:1px solid var(--line);border-radius:13px;background:#06101fcc;backdrop-filter:blur(16px);text-align:center;box-shadow:0 8px 24px #0004}.hud-card b{display:block;color:var(--primary);font-size:.74rem}.hud-card span{display:block;color:var(--muted);font-size:.58rem;margin-top:2px}
+.inner{max-width:1040px;margin:auto;padding:18px 14px calc(var(--nav) + 18px)}.head{margin-bottom:13px}.head h1{display:flex;align-items:center;gap:8px;font-size:1.17rem}.head h1 i{color:var(--primary)}.head p{margin-top:4px;color:var(--muted);font-size:.7rem;line-height:1.55}.subnote{margin-top:8px;color:var(--muted2);font-size:.63rem;line-height:1.5}
+.card{padding:14px;margin-bottom:11px;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,#0d1b2ff9,#081524f7);box-shadow:0 14px 38px #00000022}.title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;font-size:.86rem;font-weight:900}.title .mini{font-size:.61rem;color:var(--muted);font-weight:700}.label{display:block;margin:8px 0 5px;color:var(--muted);font-size:.66rem;font-weight:800}.row{display:flex;gap:7px;flex-wrap:wrap}.row>*{flex:1;min-width:130px}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+input,select,textarea{width:100%;min-height:44px;padding:10px 11px;border:1px solid var(--line);border-radius:12px;background:#06101fe9;color:#fff;outline:0;font-size:.78rem}.textarea{min-height:90px;resize:vertical}input:focus,select:focus,textarea:focus{border-color:#38bdf880;box-shadow:0 0 0 4px #38bdf814}
+.btn{min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:#132943;color:#fff;font-size:.73rem;font-weight:850}.btn:hover{filter:brightness(1.08)}.btn.primary{border:0;background:linear-gradient(135deg,#0284c7,#2563eb);box-shadow:0 10px 24px #0284c733}.btn.outline{background:transparent;color:var(--primary);border-color:#38bdf85c}.btn.ghost{background:#94a3b80a}.btn.warn{background:#6a4615;border-color:#f59e0b55}.btn.danger{background:#601c1c;border-color:#ef444455}.btn.sm{min-height:35px;padding:7px 9px;font-size:.64rem}.btn.block{width:100%}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;font-size:.59rem;font-weight:900;white-space:nowrap}.live{background:#14532d;color:#86efac}.off{background:#3d1d22;color:#fda4af}.google{background:#123f78;color:#bfdbfe}.osm{background:#21452d;color:#bbf7d0}.bts{background:#16a34a;color:#fff}.mrt{background:#2563eb;color:#fff}.purple{background:#9333ea;color:#fff}.yellow{background:#ca8a04;color:#fff}.pink{background:#db2777;color:#fff}.red{background:#dc2626;color:#fff}.rail{background:#b7791f;color:#111}.bus{background:#0f766e;color:#ccfbf1}.ferry{background:#0e7490;color:#cffafe}
+.stat{padding:10px;border:1px solid var(--line);border-radius:13px;text-align:center;background:#06101fa6}.stat b{display:block;color:var(--primary);font-size:.92rem}.stat small{display:block;color:var(--muted);font-size:.58rem;margin-top:2px}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.metric{padding:11px;border:1px solid var(--line);border-radius:13px;background:#071423}.metric b{display:block;font-size:.88rem}.metric span{display:block;margin-top:3px;color:var(--muted);font-size:.6rem}
+.list{display:grid;gap:7px}.item{padding:10px;border:1px solid var(--line);border-radius:13px;background:#06101f9c}.item-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.item b{font-size:.74rem}.item small{display:block;color:var(--muted);font-size:.63rem;line-height:1.45;margin-top:3px}.item-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.steps{display:grid;gap:7px}.step{display:grid;grid-template-columns:35px 1fr;gap:9px;padding:10px;border:1px solid var(--line);border-radius:13px;background:#06101f9c}.step .step-icon{width:35px;height:35px;display:grid;place-items:center;border-radius:10px;background:#38bdf814;color:var(--primary)}.step b{font-size:.73rem}.step small{display:block;color:var(--muted);font-size:.62rem;line-height:1.45;margin-top:3px}
+.place-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.place-card{padding:11px;border:1px solid var(--line);border-radius:14px;background:#06101fbb}.place-card h3{font-size:.74rem;line-height:1.35}.place-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}.place-meta span{font-size:.58rem;color:var(--muted)}.place-card p{font-size:.62rem;color:var(--muted);line-height:1.45;margin-top:5px}.star{color:#fbbf24}.price{color:#86efac;font-weight:900}.empty{padding:12px;border:1px dashed var(--line);border-radius:13px;text-align:center;color:var(--muted);font-size:.66rem}.loading{display:flex;align-items:center;justify-content:center;gap:7px;min-height:66px;color:var(--muted)}.warning{padding:10px;border:1px solid #f59e0b30;border-radius:12px;background:#f59e0b09;color:#fcd34d;font-size:.63rem;line-height:1.55}.success{padding:10px;border:1px solid #22c55e2f;border-radius:12px;background:#22c55e08;color:#a7f3d0;font-size:.63rem;line-height:1.55}.source{font-size:.58rem;color:var(--muted2);line-height:1.5;margin-top:6px}.codebox{padding:10px;border-radius:12px;background:#020617;border:1px solid var(--line);font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cbd5e1;white-space:pre-wrap;word-break:break-word;max-height:240px;overflow:auto}
+.route-card{padding:12px;margin-bottom:8px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#10233b,#091725)}.route-card.selected{border-color:#38bdf87a;box-shadow:0 0 0 2px #38bdf818}.route-line{height:7px;border-radius:99px;margin:7px 0;background:linear-gradient(90deg,#38bdf8,#7c3aed,#f59e0b)}.route-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.route-summary div{padding:8px;border:1px solid var(--line);border-radius:11px;text-align:center}.route-summary b{display:block;font-size:.76rem}.route-summary span{display:block;color:var(--muted);font-size:.58rem;margin-top:2px}.transit-leg{position:relative;padding:11px;border:1px solid var(--line);border-radius:14px;background:#06101fcc}.transit-leg:before{content:"";position:absolute;left:13px;top:14px;bottom:14px;width:4px;border-radius:99px;background:var(--leg-color,#38bdf8)}.transit-leg .content{padding-left:17px}.transit-line-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.line-name{display:flex;align-items:center;gap:7px;min-width:0}.line-bubble{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:950;font-size:.68rem;flex:0 0 32px;background:var(--leg-color,#2563eb)}.line-name b{font-size:.76rem}.time-row{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-top:8px}.time-box{padding:8px;border-radius:11px;background:#071423;border:1px solid var(--line)}.time-box b{display:block;font-size:.73rem}.time-box span{display:block;color:var(--muted);font-size:.58rem;margin-top:2px}.arrow-mid{font-size:.72rem;color:var(--muted)}
+.bus-list{display:grid;gap:7px;max-height:520px;overflow:auto;padding-right:2px}.bus-route{padding:10px;border:1px solid var(--line);border-radius:13px;background:#06101fbb;cursor:pointer}.bus-route:hover{background:#0b1c31}.bus-route b{font-size:.72rem}.bus-route small{display:block;color:var(--muted);font-size:.6rem;margin-top:3px;line-height:1.4}.bus-route .route-tag{display:inline-block;margin-top:6px;padding:3px 7px;border-radius:99px;font-size:.57rem;font-weight:900;background:#0f766e;color:#ccfbf1}
+.station-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.station-line{padding:8px;border:1px solid var(--line);border-radius:12px}.station-line b{font-size:.68rem}.station-line small{display:block;color:var(--muted);font-size:.58rem;margin-top:2px;line-height:1.5}.station-line button{margin-top:6px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.toggle{display:flex;align-items:center;gap:9px;padding:9px;border:1px solid var(--line);border-radius:12px;background:#06101f99}.toggle input{width:auto;min-height:auto}.toggle label{font-size:.65rem;color:#dbeafe}.segmented{display:flex;gap:5px;flex-wrap:wrap}.segmented button{padding:7px 9px;border-radius:9px;border:1px solid var(--line);background:#071423;color:#cbd5e1;font-size:.61rem;font-weight:850}.segmented button.active{border-color:#38bdf86a;color:#fff;background:#12345b}
+nav{z-index:1800;min-height:var(--nav);padding:7px 7px max(8px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(6,1fr);gap:5px;background:#06101ff4;border-top:1px solid var(--line);backdrop-filter:blur(18px)}.nav{min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:14px;background:transparent;color:#64748b;font-size:.58rem;font-weight:800}.nav i{font-size:.93rem}.nav.active{color:var(--primary);background:#38bdf80d}.nav .count{position:absolute;margin:0 0 26px 28px;padding:2px 5px;border-radius:999px;background:#ef4444;color:#fff;font-size:.5rem}
+#toast{position:fixed;left:50%;bottom:calc(var(--nav) + 18px);z-index:3000;transform:translate(-50%,18px);opacity:0;pointer-events:none;max-width:min(92vw,620px);padding:10px 13px;border:1px solid var(--line2);border-radius:12px;background:#050f1ced;box-shadow:var(--shadow);font-size:.67rem;color:#e2e8f0;transition:.25s ease}.show-toast{opacity:1!important;transform:translate(-50%,0)!important}
+.modal{position:fixed;inset:0;z-index:2800;display:none;align-items:flex-end;justify-content:center;padding:12px;background:#0008}.modal.show{display:flex}.modal-card{width:min(900px,100%);max-height:88vh;overflow:auto;padding:14px;border:1px solid var(--line2);border-radius:20px;background:#071423;box-shadow:var(--shadow)}.modal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.icon-btn{width:35px;height:35px;display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;background:#0d1b2f;color:#cbd5e1}
+.autocomplete-results{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:1400;max-height:54vh;overflow:auto;border:1px solid var(--line);border-radius:14px;background:#0a1728f7;box-shadow:var(--shadow)}.autocomplete-results[hidden]{display:none}.suggest{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}.suggest:hover{background:#11243c}.suggest b{display:block;font-size:.7rem}.suggest span{display:block;color:var(--muted);font-size:.6rem;margin-top:2px;line-height:1.4}
+.google-credit{position:absolute;left:10px;bottom:7px;z-index:500;font-size:.52rem;color:#94a3b8;background:#06101fb8;padding:4px 7px;border-radius:8px;pointer-events:none}.google-credit a{color:#94a3b8}.hidden{display:none!important}.muted{color:var(--muted)}
+@media (max-width:820px){.metric-grid{grid-template-columns:repeat(2,1fr)}.place-grid{grid-template-columns:1fr}.grid4{grid-template-columns:repeat(2,1fr)}.map-hud{grid-template-columns:repeat(2,1fr)}.status-pill{max-width:42vw}}
+@media (max-width:600px){:root{--nav:71px}.brand-main{font-size:.82rem}.brand-sub{display:none}.header-right .status-pill{display:none}.inner{padding-left:11px;padding-right:11px}.grid2,.grid3,.form-grid,.station-grid{grid-template-columns:1fr}.route-summary{grid-template-columns:1fr 1fr 1fr}.map-overlay{left:9px;right:9px}.search-shell{border-radius:15px}.quick-row{gap:5px}.quick-chip{font-size:.58rem;padding:6px 8px}.btn{font-size:.69rem}.nav{font-size:.53rem}.nav i{font-size:.83rem}.modal{padding:0}.modal-card{border-radius:20px 20px 0 0;max-height:92vh}}
+</style>
 </head>
-<body class="bg-slate-900 text-slate-100 h-screen w-screen relative overflow-hidden flex flex-col">
-
-    <!-- Top iOS Header Bar -->
-    <header class="absolute top-0 left-0 right-0 z-30 pt-safe px-4 py-2 pointer-events-none">
-        <div class="flex items-center justify-between pointer-events-auto">
-            <!-- App Identity -->
-            <div class="glass-panel rounded-2xl px-3 py-1.5 flex items-center gap-2 shadow-lg">
-                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-orange via-brand-green to-brand-blue flex items-center justify-center text-white font-bold text-lg shadow">
-                    <i class="fa-solid fa-route"></i>
-                </div>
-                <div>
-                    <h1 class="text-xs font-bold leading-tight tracking-wide text-white">BKK COMMUTE</h1>
-                    <p class="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Live GPS BKK
-                    </p>
-                </div>
-            </div>
-
-            <!-- Quick Action Buttons -->
-            <div class="flex items-center gap-2">
-                <!-- Search Button -->
-                <button onclick="switchTab('planner')" class="glass-panel w-10 h-10 rounded-2xl flex items-center justify-center text-white active:scale-95 transition shadow-lg">
-                    <i class="fa-solid fa-magnifying-glass text-sm"></i>
-                </button>
-                <!-- iOS PWA Help -->
-                <button onclick="togglePwaModal()" class="glass-panel px-3 h-10 rounded-2xl flex items-center gap-1.5 text-xs font-medium text-amber-300 active:scale-95 transition shadow-lg">
-                    <i class="fa-brands fa-apple text-base"></i>
-                    <span class="hidden sm:inline">ติดหน้าจอ</span>
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- iOS Safari PWA Install Modal Prompt -->
-    <div id="pwa-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-        <div class="glass-panel bg-slate-900/95 rounded-3xl p-6 max-w-sm w-full text-slate-100 border border-slate-700 shadow-2xl relative animate-bounce-in">
-            <button onclick="togglePwaModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            <div class="text-center mb-4">
-                <div class="w-16 h-16 bg-gradient-to-tr from-brand-orange to-brand-blue rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 shadow-lg">
-                    <i class="fa-solid fa-mobile-screen"></i>
-                </div>
-                <h3 class="text-lg font-bold text-white">ติดตั้งลงบน iPhone ของคุณ</h3>
-                <p class="text-xs text-slate-300 mt-1">ใช้งานเต็มหน้าจอเหมือน App จริงโดยไม่ต้องโหลดผ่าน App Store</p>
-            </div>
-            <div class="space-y-3 text-xs bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700/60 mb-5">
-                <div class="flex items-center gap-3">
-                    <span class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center font-bold text-amber-400">1</span>
-                    <span>กดปุ่ม <i class="fa-solid fa-share-from-square text-sky-400 mx-1"></i> (แชร์) ด้านล่างของ Safari</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center font-bold text-amber-400">2</span>
-                    <span>เลื่อนลงมาแล้วเลือก <strong class="text-white">"เพิ่มไปยังหน้าจอหลัก"</strong></span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center font-bold text-amber-400">3</span>
-                    <span>กด <strong class="text-white">"เพิ่ม"</strong> ที่มุมขวาบน พร้อมเปิดใช้งาน!</span>
-                </div>
-            </div>
-            <button onclick="togglePwaModal()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-medium text-white text-xs shadow-lg active:scale-95 transition">
-                รับทราบ และย้อนกลับ
-            </button>
-        </div>
+<body>
+<header>
+  <div class="brand">
+    <div class="brand-icon"><i class="fa-solid fa-location-crosshairs"></i></div>
+    <div class="brand-copy">
+      <div class="brand-main">BKK Ultimate Tracker — Google Pro</div>
+      <div class="brand-sub">Google Maps · Places · Transit · Bus Network · GPS · Fare · Live Adapter</div>
     </div>
+  </div>
+  <div class="header-right">
+    <div id="providerStatus" class="status-pill"><span class="dot"></span><span>กำลังเริ่มระบบแผนที่…</span></div>
+    <button class="btn sm ghost" id="headerSettingsBtn" title="การตั้งค่า"><i class="fa-solid fa-gear"></i></button>
+  </div>
+</header>
 
-    <!-- MAIN VIEW CONTAINER -->
-    <main class="relative flex-1 w-full h-full overflow-hidden">
-        
-        <!-- TAB 1: INTERACTIVE MAP VIEW (DEFAULT) -->
-        <div id="tab-map" class="tab-content absolute inset-0 w-full h-full">
-            <div id="map"></div>
-
-            <!-- Map Floating Controls -->
-            <div class="absolute right-4 top-20 z-20 flex flex-col gap-2.5">
-                <!-- User Location Toggle -->
-                <button id="btn-recenter" onclick="recenterMap()" class="glass-panel w-11 h-11 rounded-2xl flex items-center justify-center text-sky-400 shadow-xl active:scale-90 transition">
-                    <i class="fa-solid fa-location-crosshairs text-lg"></i>
-                </button>
-                <!-- Vehicle Filter Toggle -->
-                <button onclick="toggleVehicleFilterModal()" class="glass-panel w-11 h-11 rounded-2xl flex items-center justify-center text-amber-400 shadow-xl active:scale-90 transition">
-                    <i class="fa-solid fa-filter text-base"></i>
-                </button>
-            </div>
-
-            <!-- Strava Active Workout Overlay HUD (Shows when active recording) -->
-            <div id="strava-hud" class="hidden absolute top-20 left-4 right-16 z-20 glass-panel rounded-2xl p-3 border-l-4 border-brand-orange shadow-2xl transition-all">
-                <div class="flex items-center justify-between text-xs">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
-                        <span class="font-bold text-brand-orange tracking-wider">STRAVA LIVE RECORD</span>
-                    </div>
-                    <span id="hud-timer" class="font-mono font-bold text-amber-300">00:00:00</span>
-                </div>
-                <div class="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-slate-700/50 text-center">
-                    <div>
-                        <div class="text-[10px] text-slate-400">ระยะทาง</div>
-                        <div id="hud-distance" class="text-sm font-bold text-white">0.00 <span class="text-[10px]">กม.</span></div>
-                    </div>
-                    <div>
-                        <div class="text-[10px] text-slate-400">ความเร็ว</div>
-                        <div id="hud-speed" class="text-sm font-bold text-white">0.0 <span class="text-[10px]">กม./ชม.</span></div>
-                    </div>
-                    <div>
-                        <div class="text-[10px] text-slate-400">แคลอรี</div>
-                        <div id="hud-calories" class="text-sm font-bold text-white">0 <span class="text-[10px]">kcal</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Floating Selected Vehicle Info Card (ViaBus / BKK Rail popup style) -->
-            <div id="vehicle-card" class="hidden absolute bottom-24 left-4 right-4 z-20 glass-panel rounded-3xl p-4 border border-slate-700/80 shadow-2xl transition-all">
-                <div class="flex items-start justify-between">
-                    <div class="flex items-center gap-3">
-                        <div id="vc-icon-bg" class="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center text-white text-xl font-bold shadow-md">
-                            <i id="vc-icon" class="fa-solid fa-bus"></i>
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <h3 id="vc-title" class="text-base font-bold text-white">สาย 511 (ขสมก.)</h3>
-                                <span id="vc-tag" class="px-2 py-0.5 rounded-full text-[10px] bg-red-500/20 text-red-400 font-medium">รถเมล์ปรับอากาศ</span>
-                            </div>
-                            <p id="vc-route" class="text-xs text-slate-300 mt-0.5">ปากน้ำ - สายใต้ใหม่ (ทางด่วน)</p>
-                        </div>
-                    </div>
-                    <button onclick="closeVehicleCard()" class="text-slate-400 hover:text-white p-1">
-                        <i class="fa-solid fa-xmark text-lg"></i>
-                    </button>
-                </div>
-                <div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-700/60 text-center text-xs">
-                    <div class="bg-slate-800/60 p-2 rounded-xl">
-                        <span class="text-[10px] text-slate-400 block">ป้ายถัดไป</span>
-                        <strong id="vc-next-stop" class="text-sky-300">BTS อโศก</strong>
-                    </div>
-                    <div class="bg-slate-800/60 p-2 rounded-xl">
-                        <span class="text-[10px] text-slate-400 block">คาดว่าจะถึงใน</span>
-                        <strong id="vc-eta" class="text-amber-400">4 นาที</strong>
-                    </div>
-                    <div class="bg-slate-800/60 p-2 rounded-xl">
-                        <span class="text-[10px] text-slate-400 block">ความเร็วปัจจุบัน</span>
-                        <strong id="vc-speed" class="text-emerald-400">28 กม./ชม.</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB 2: VIA BUS & BKK RAIL LIVE LIST -->
-        <div id="tab-live" class="tab-content hidden absolute inset-0 w-full h-full bg-slate-900 pt-20 pb-24 px-4 overflow-y-auto no-scrollbar">
-            <div class="max-w-md mx-auto space-y-4">
-                
-                <div class="flex items-center justify-between mb-2">
-                    <div>
-                        <h2 class="text-lg font-bold text-white">ตำแหน่งรถในรัศมีใกล้คุณ</h2>
-                        <p class="text-xs text-slate-400">อัปเดตตำแหน่ง Real-time จาก ขสมก. & BKK Rail</p>
-                    </div>
-                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                        <i class="fa-solid fa-wifi text-[10px] mr-1"></i> Live GPS
-                    </span>
-                </div>
-
-                <!-- Category Tabs -->
-                <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
-                    <button class="px-3 py-2 rounded-xl bg-blue-600 text-white font-medium whitespace-nowrap shadow">ทั้งหมด (6)</button>
-                    <button class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium whitespace-nowrap border border-slate-700">ขสมก. รถเมล์</button>
-                    <button class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium whitespace-nowrap border border-slate-700">BTS สายสุขุมวิท</button>
-                    <button class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium whitespace-nowrap border border-slate-700">MRT สายสีน้ำเงิน</button>
-                </div>
-
-                <!-- Transit Item Cards -->
-                <div id="live-vehicles-container" class="space-y-3">
-                    <!-- Populated dynamically via JS -->
-                </div>
-
-            </div>
-        </div>
-
-        <!-- TAB 3: MULTI-MODAL ROUTE PLANNER -->
-        <div id="tab-planner" class="tab-content hidden absolute inset-0 w-full h-full bg-slate-900 pt-20 pb-24 px-4 overflow-y-auto no-scrollbar">
-            <div class="max-w-md mx-auto space-y-4">
-                
-                <div class="glass-panel p-4 rounded-3xl border border-slate-700/70 shadow-xl space-y-3">
-                    <h2 class="text-sm font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-diamond-turn-right text-brand-orange"></i> ค้นหาเส้นทางผสม (Multi-modal)
-                    </h2>
-
-                    <!-- Input Fields -->
-                    <div class="space-y-2 relative">
-                        <div class="flex items-center gap-3 bg-slate-800/80 px-3 py-2.5 rounded-2xl border border-slate-700">
-                            <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
-                            <input id="plan-from" type="text" value="ตำแหน่งปัจจุบัน (อนุสาวรีย์ชัยฯ)" class="bg-transparent text-xs text-white focus:outline-none w-full placeholder-slate-500">
-                        </div>
-                        <div class="flex items-center gap-3 bg-slate-800/80 px-3 py-2.5 rounded-2xl border border-slate-700">
-                            <span class="w-2.5 h-2.5 rounded-full bg-brand-orange"></span>
-                            <input id="plan-to" type="text" value="BTS อโศก / Terminal 21" class="bg-transparent text-xs text-white focus:outline-none w-full placeholder-slate-500">
-                        </div>
-                    </div>
-
-                    <button onclick="calculateRoute()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-emerald-600 rounded-2xl font-semibold text-xs text-white shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-route"></i> คำนวณเส้นทางและเวลาที่ดีที่สุด
-                    </button>
-                </div>
-
-                <!-- Suggested Route Results -->
-                <div id="route-results" class="space-y-3">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">เส้นทางแนะนำ (อ้างอิงจราจร Real-time)</h3>
-
-                    <!-- Route Option 1 (Fastest) -->
-                    <div onclick="selectRouteOption(1)" class="glass-panel p-4 rounded-3xl border border-emerald-500/50 bg-slate-800/50 space-y-3 cursor-pointer hover:border-emerald-400 transition">
-                        <div class="flex items-center justify-between">
-                            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">เร็วที่สุด (32 นาที)</span>
-                            <span class="text-xs font-bold text-amber-300">฿38 บาท</span>
-                        </div>
-                        
-                        <!-- Route Steps Badge Line -->
-                        <div class="flex items-center gap-2 text-xs flex-wrap">
-                            <span class="flex items-center gap-1 bg-slate-700/80 px-2 py-1 rounded-lg text-slate-200">
-                                <i class="fa-solid fa-person-walking text-slate-400"></i> 400ม.
-                            </span>
-                            <i class="fa-solid fa-chevron-right text-[10px] text-slate-500"></i>
-                            <span class="flex items-center gap-1 bg-red-600/30 text-red-300 border border-red-500/40 px-2 py-1 rounded-lg font-bold">
-                                <i class="fa-solid fa-bus"></i> รถเมล์ 511
-                            </span>
-                            <i class="fa-solid fa-chevron-right text-[10px] text-slate-500"></i>
-                            <span class="flex items-center gap-1 bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-2 py-1 rounded-lg font-bold">
-                                <i class="fa-solid fa-train text-xs"></i> BTS สุขุมวิท
-                            </span>
-                        </div>
-
-                        <p class="text-xs text-slate-300">
-                            ขึ้นสาย 511 ที่ป้ายพญาไท ลงต่อ BTS ราชเทวี มุ่งหน้าอโศก
-                        </p>
-                    </div>
-
-                    <!-- Route Option 2 (Cheapest) -->
-                    <div onclick="selectRouteOption(2)" class="glass-panel p-4 rounded-3xl border border-slate-700/80 bg-slate-800/30 space-y-3 cursor-pointer hover:border-slate-500 transition">
-                        <div class="flex items-center justify-between">
-                            <span class="px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-400 text-[10px] font-bold">ประหยัดสุด (45 นาที)</span>
-                            <span class="text-xs font-bold text-emerald-400">฿15 บาท</span>
-                        </div>
-                        
-                        <div class="flex items-center gap-2 text-xs flex-wrap">
-                            <span class="flex items-center gap-1 bg-red-600/30 text-red-300 border border-red-500/40 px-2 py-1 rounded-lg font-bold">
-                                <i class="fa-solid fa-bus"></i> รถเมล์ สาย 137
-                            </span>
-                            <i class="fa-solid fa-chevron-right text-[10px] text-slate-500"></i>
-                            <span class="flex items-center gap-1 bg-slate-700/80 px-2 py-1 rounded-lg text-slate-200">
-                                <i class="fa-solid fa-person-walking text-slate-400"></i> เดิน 350ม.
-                            </span>
-                        </div>
-                        <p class="text-xs text-slate-400">
-                            ต่อเดียวจบ ไม่ต้องเปลี่ยนสาย แต่ใช้เวลานานขึ้นเล็กน้อย
-                        </p>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- TAB 4: STRAVA FITNESS & DISTANCE TRACKER -->
-        <div id="tab-strava" class="tab-content hidden absolute inset-0 w-full h-full bg-slate-900 pt-20 pb-24 px-4 overflow-y-auto no-scrollbar">
-            <div class="max-w-md mx-auto space-y-4">
-                
-                <!-- Strava Header Widget -->
-                <div class="bg-gradient-to-r from-orange-600 to-red-600 p-5 rounded-3xl text-white shadow-xl relative overflow-hidden">
-                    <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl font-black">
-                        <i class="fa-solid fa-person-running"></i>
-                    </div>
-                    <div class="flex items-center justify-between relative z-10">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-brands fa-strava text-2xl text-amber-300"></i>
-                            <h2 class="font-bold text-base tracking-wide">STRAVA BKK CONNECT</h2>
-                        </div>
-                        <span class="px-2 py-0.5 rounded-md bg-black/30 text-[10px] font-semibold text-amber-200">
-                            Syncing GPS
-                        </span>
-                    </div>
-
-                    <!-- Daily Progress Summary -->
-                    <div class="grid grid-cols-2 gap-3 mt-4 relative z-10">
-                        <div class="bg-black/25 p-3 rounded-2xl backdrop-blur-md">
-                            <span class="text-[10px] text-orange-200 block">สะสมวันนี้ (เดิน+ปั่น)</span>
-                            <div class="text-xl font-black text-white mt-0.5">
-                                <span id="strava-total-dist">3.42</span> <span class="text-xs font-normal">กม.</span>
-                            </div>
-                        </div>
-                        <div class="bg-black/25 p-3 rounded-2xl backdrop-blur-md">
-                            <span class="text-[10px] text-orange-200 block">เผาผลาญแคลอรี</span>
-                            <div class="text-xl font-black text-white mt-0.5">
-                                <span id="strava-total-cal">184</span> <span class="text-xs font-normal">kcal</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Record Activity Control -->
-                <div class="glass-panel p-5 rounded-3xl border border-slate-700/80 text-center space-y-3">
-                    <h3 class="text-sm font-bold text-white">บันทึกการเดิน / ปั่นจักรยานแบบ Real-time</h3>
-                    <p class="text-xs text-slate-400">ระบบจะวาดเส้นทางบนแผนที่และคำนวณความเร็วแบบวินาทีต่อวินาที</p>
-
-                    <button id="btn-toggle-strava" onclick="toggleStravaTracking()" class="w-full py-3.5 rounded-2xl font-bold text-sm bg-brand-orange hover:bg-orange-600 text-white shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
-                        <i id="strava-btn-icon" class="fa-solid fa-play"></i>
-                        <span id="strava-btn-text">เริ่มบันทึกกิจกรรม (Start Activity)</span>
-                    </button>
-                </div>
-
-                <!-- Activity Log List -->
-                <div class="space-y-2">
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">กิจกรรมย้อนหลังใน กทม.</h4>
-                    
-                    <div class="glass-panel p-3.5 rounded-2xl border border-slate-700/50 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-orange-500/20 text-brand-orange flex items-center justify-center text-lg">
-                                <i class="fa-solid fa-person-walking"></i>
-                            </div>
-                            <div>
-                                <h5 class="text-xs font-bold text-white">เดินเชื่อมต่อ BTS สยาม -> เซ็นทรัลเวิลด์</h5>
-                                <p class="text-[10px] text-slate-400">วันนี้ 08:20 น. • Pace 11'24"</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-xs font-bold text-white">1.10 กม.</div>
-                            <div class="text-[10px] text-emerald-400">62 kcal</div>
-                        </div>
-                    </div>
-
-                    <div class="glass-panel p-3.5 rounded-2xl border border-slate-700/50 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg">
-                                <i class="fa-solid fa-bicycle"></i>
-                            </div>
-                            <div>
-                                <h5 class="text-xs font-bold text-white">ปั่นจักรยานสวนเบญจกิติ</h5>
-                                <p class="text-[10px] text-slate-400">เมื่อวาน 17:45 น. • 18.4 กม./ชม.</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-xs font-bold text-white">5.80 กม.</div>
-                            <div class="text-[10px] text-emerald-400">195 kcal</div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- TAB 5: DAILY LIFE SCHEDULER (กำหนดเวลาชีวิต) -->
-        <div id="tab-schedule" class="tab-content hidden absolute inset-0 w-full h-full bg-slate-900 pt-20 pb-24 px-4 overflow-y-auto no-scrollbar">
-            <div class="max-w-md mx-auto space-y-4">
-                
-                <!-- Smart Countdown Banner -->
-                <div class="bg-gradient-to-r from-indigo-900 via-slate-800 to-blue-900 p-4 rounded-3xl border border-indigo-500/40 shadow-xl space-y-2">
-                    <div class="flex items-center justify-between text-xs">
-                        <span class="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                            <i class="fa-solid fa-bell mr-1"></i> เตือนเวลาเดินทางถัดไป
-                        </span>
-                        <span class="text-slate-400">อ้างอิงสภาพการจราจร</span>
-                    </div>
-                    
-                    <div class="flex items-center justify-between pt-1">
-                        <div>
-                            <h3 class="text-base font-bold text-white">ต้องออกจากบ้านเพื่อไป BTS</h3>
-                            <p class="text-xs text-indigo-200">ต่อรถเมล์สาย 511 เพื่อให้ทันนัด 09:00 น.</p>
-                        </div>
-                        <div class="text-right">
-                            <div id="departure-countdown" class="text-xl font-mono font-black text-amber-400">12:45</div>
-                            <span class="text-[10px] text-slate-400">นาที (เหลือเวลา)</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Schedule Agenda list -->
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-bold text-white">ตารางเวลาชีวิตวันนี้</h3>
-                        <button onclick="addNewScheduleItem()" class="text-xs text-sky-400 font-medium hover:underline">
-                            + เพิ่มนัดหมาย
-                        </button>
-                    </div>
-
-                    <!-- Agenda Item 1 -->
-                    <div class="glass-panel p-3.5 rounded-2xl border-l-4 border-amber-400 flex items-center justify-between">
-                        <div class="space-y-0.5">
-                            <div class="text-[10px] font-bold text-amber-400">07:30 น. (อีก 12 นาที)</div>
-                            <h4 class="text-xs font-bold text-white">ออกจากบ้าน ขึ้นรถเมล์สาย 511</h4>
-                            <p class="text-[10px] text-slate-400">ป้ายรถเมล์หน้าปากซอยสุขุมวิท 101</p>
-                        </div>
-                        <span class="px-2 py-1 rounded-lg bg-slate-800 text-[10px] text-slate-300 border border-slate-700">
-                            รถเมล์
-                        </span>
-                    </div>
-
-                    <!-- Agenda Item 2 -->
-                    <div class="glass-panel p-3.5 rounded-2xl border-l-4 border-emerald-500 flex items-center justify-between opacity-80">
-                        <div class="space-y-0.5">
-                            <div class="text-[10px] font-bold text-emerald-400">08:05 น.</div>
-                            <h4 class="text-xs font-bold text-white">เปลี่ยนขึ้น BTS อุดมสุข -> อโศก</h4>
-                            <p class="text-[10px] text-slate-400">คาดการณ์เวลาบนขบวน 18 นาที</p>
-                        </div>
-                        <span class="px-2 py-1 rounded-lg bg-emerald-950/60 text-[10px] text-emerald-300 border border-emerald-800">
-                            BTS
-                        </span>
-                    </div>
-
-                    <!-- Agenda Item 3 -->
-                    <div class="glass-panel p-3.5 rounded-2xl border-l-4 border-blue-500 flex items-center justify-between opacity-70">
-                        <div class="space-y-0.5">
-                            <div class="text-[10px] font-bold text-blue-400">08:45 น.</div>
-                            <h4 class="text-xs font-bold text-white">เดิน Skywalk เข้าออฟฟิศ (บันทึก Strava)</h4>
-                            <p class="text-[10px] text-slate-400">เป้าหมายเดิน 400 เมตร</p>
-                        </div>
-                        <span class="px-2 py-1 rounded-lg bg-slate-800 text-[10px] text-slate-300 border border-slate-700">
-                            เดิน
-                        </span>
-                    </div>
-
-                    <!-- Agenda Item 4 -->
-                    <div class="glass-panel p-3.5 rounded-2xl border-l-4 border-purple-500 flex items-center justify-between opacity-60">
-                        <div class="space-y-0.5">
-                            <div class="text-[10px] font-bold text-purple-400">09:00 น.</div>
-                            <h4 class="text-xs font-bold text-white">ประชุมทีมประจำสัปดาห์ (Morning Sync)</h4>
-                            <p class="text-[10px] text-slate-400">ห้องประชุม 3 ชั้น 14</p>
-                        </div>
-                        <span class="px-2 py-1 rounded-lg bg-purple-950/60 text-[10px] text-purple-300 border border-purple-800">
-                            งาน
-                        </span>
-                    </div>
-
-                </div>
-
-            </div>
-        </div>
-
-    </main>
-
-    <!-- BOTTOM NAVIGATION BAR (iOS Native Style) -->
-    <nav class="fixed bottom-0 left-0 right-0 z-40 glass-panel border-t border-slate-800 pb-safe pt-2">
-        <div class="max-w-md mx-auto grid grid-cols-5 text-center px-2">
-            <!-- Map Tab Button -->
-            <button onclick="switchTab('map')" id="nav-map" class="nav-btn flex flex-col items-center gap-1 py-1 text-blue-400 font-medium">
-                <i class="fa-solid fa-map-location-dot text-base"></i>
-                <span class="text-[10px]">แผนที่</span>
-            </button>
-
-            <!-- Transit Live Tab Button -->
-            <button onclick="switchTab('live')" id="nav-live" class="nav-btn flex flex-col items-center gap-1 py-1 text-slate-400 hover:text-white">
-                <i class="fa-solid fa-bus text-base"></i>
-                <span class="text-[10px]">สายรถ/BTS</span>
-            </button>
-
-            <!-- Planner Tab Button -->
-            <button onclick="switchTab('planner')" id="nav-planner" class="nav-btn flex flex-col items-center gap-1 py-1 text-slate-400 hover:text-white">
-                <i class="fa-solid fa-route text-base"></i>
-                <span class="text-[10px]">วางแผน</span>
-            </button>
-
-            <!-- Strava Tab Button -->
-            <button onclick="switchTab('strava')" id="nav-strava" class="nav-btn flex flex-col items-center gap-1 py-1 text-slate-400 hover:text-white">
-                <i class="fa-solid fa-heart-pulse text-base"></i>
-                <span class="text-[10px]">Strava</span>
-            </button>
-
-            <!-- Life Schedule Tab Button -->
-            <button onclick="switchTab('schedule')" id="nav-schedule" class="nav-btn flex flex-col items-center gap-1 py-1 text-slate-400 hover:text-white">
-                <i class="fa-solid fa-clock text-base"></i>
-                <span class="text-[10px]">เวลาชีวิต</span>
-            </button>
-        </div>
-    </nav>
-
-    <!-- Filter Modal -->
-    <div id="filter-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass-panel bg-slate-900 rounded-3xl p-5 max-w-xs w-full text-white border border-slate-700 shadow-2xl">
-            <h3 class="text-sm font-bold mb-3 flex items-center gap-2">
-                <i class="fa-solid fa-filter text-amber-400"></i> เลือกแสดงยานพาหนะ
-            </h3>
-            <div class="space-y-2 text-xs">
-                <label class="flex items-center gap-2.5 p-2 rounded-xl bg-slate-800/80 cursor-pointer">
-                    <input type="checkbox" checked onchange="toggleVehicleType('bus')" class="rounded text-blue-600 focus:ring-0">
-                    <span>ขสมก. / รถเมล์ (Bus)</span>
-                </label>
-                <label class="flex items-center gap-2.5 p-2 rounded-xl bg-slate-800/80 cursor-pointer">
-                    <input type="checkbox" checked onchange="toggleVehicleType('bts')" class="rounded text-blue-600 focus:ring-0">
-                    <span>BTS รถไฟฟ้าสายสีเขียว</span>
-                </label>
-                <label class="flex items-center gap-2.5 p-2 rounded-xl bg-slate-800/80 cursor-pointer">
-                    <input type="checkbox" checked onchange="toggleVehicleType('mrt')" class="rounded text-blue-600 focus:ring-0">
-                    <span>MRT รถไฟฟ้าสายสีน้ำเงิน</span>
-                </label>
-            </div>
-            <button onclick="toggleVehicleFilterModal()" class="w-full mt-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-semibold">
-                ปิด
-            </button>
-        </div>
+<main>
+<section id="mapPanel" class="panel map-panel active">
+  <div id="map"></div>
+  <div id="mapFallback" class="map-fallback" aria-hidden="true"></div>
+  <div class="map-overlay map-top">
+    <div class="search-panel">
+      <div class="search-shell">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <div id="googleSearchHost" class="gmp-slot"></div>
+        <input id="fallbackSearch" class="fallback-search-input" placeholder="ค้นหาสถานที่ / ที่อยู่ / สถานี / รถเมล์" autocomplete="off">
+        <button id="globalSearchBtn" class="btn primary sm" title="ค้นหา"><i class="fa-solid fa-arrow-right"></i></button>
+      </div>
+      <div id="fallbackSuggestions" class="autocomplete-results" hidden></div>
+      <div class="quick-row">
+        <button class="quick-chip" data-quick="restaurant"><i class="fa-solid fa-utensils"></i>ร้านอาหาร</button>
+        <button class="quick-chip" data-quick="cafe"><i class="fa-solid fa-mug-hot"></i>คาเฟ่</button>
+        <button class="quick-chip" data-quick="hospital"><i class="fa-solid fa-hospital"></i>โรงพยาบาล</button>
+        <button class="quick-chip" data-quick="shopping_mall"><i class="fa-solid fa-bag-shopping"></i>ห้าง</button>
+        <button class="quick-chip" data-quick="transit_station"><i class="fa-solid fa-train-subway"></i>สถานี</button>
+        <button class="quick-chip" data-quick="bus_station"><i class="fa-solid fa-bus"></i>รถเมล์</button>
+      </div>
+      <div id="pinCard" class="pin-card"><b id="pinTitle">หมุดปลายทาง</b><small id="pinCoords">-</small><div class="row" style="margin-top:7px"><button class="btn primary sm" id="usePinBtn">ใช้เป็นปลายทาง</button><button class="btn outline sm" id="pinSearchBtn">ค้นหาสถานที่รอบหมุด</button></div></div>
     </div>
+  </div>
+  <div class="map-overlay map-bottom">
+    <div class="map-hud">
+      <div class="hud-card"><b id="hudGps">OFF</b><span>GPS</span></div>
+      <div class="hud-card"><b id="hudPlaces">0</b><span>Places</span></div>
+      <div class="hud-card"><b id="hudBus">0</b><span>Bus lines</span></div>
+      <div class="hud-card"><b id="hudLive">0</b><span>Live vehicles</span></div>
+    </div>
+    <div class="map-tools" style="margin-top:8px">
+      <button class="fab" id="togglePlacesBtn" title="สถานที่รอบแผนที่"><i class="fa-solid fa-building"></i></button>
+      <button class="fab" id="toggleBusBtn" title="เส้นทางรถเมล์"><i class="fa-solid fa-bus"></i></button>
+      <button class="fab" id="toggleLiveBtn" title="รถ/ขบวน Live"><i class="fa-solid fa-satellite-dish"></i></button>
+      <button class="fab" id="pinBtn" title="วางหมุด"><i class="fa-solid fa-location-dot"></i></button>
+      <button class="fab" id="gpsBtn" title="ตำแหน่งของฉัน"><i class="fa-solid fa-crosshairs"></i></button>
+    </div>
+  </div>
+  <div class="google-credit" id="dataCredit">Google Maps / OpenStreetMap data sources are used according to their respective terms.</div>
+</section>
 
-    <script>
-        // --- GLOBAL APP STATE & SIMULATION DATA ---
-        let map;
-        let userMarker;
-        let stravaPolyline;
-        let stravaPathPoints = [];
-        let isTrackingStrava = false;
-        let stravaSeconds = 0;
-        let stravaTimerInterval = null;
-        let stravaDistanceMeters = 0;
+<section id="plannerPanel" class="panel">
+<div class="inner">
+  <div class="head"><h1><i class="fa-solid fa-route"></i> วางแผนการเดินทางแบบละเอียด</h1><p>Google Routes จะคำนวณเส้นทางรถยนต์/เดิน/จักรยาน/Transit พร้อมทางเลือก, เวลาออก, เวลาถึง, สายรถ, ปลายทางรถ, จำนวนสถานี, ค่าโดยสาร และรายละเอียดช่วงเดินทางเมื่อข้อมูลมีให้</p></div>
+  <div class="card">
+    <div class="title">ต้นทาง → ปลายทาง <span id="routeStatus" class="badge off">ยังไม่คำนวณ</span></div>
+    <label class="label">ต้นทาง</label>
+    <input id="originInput" placeholder="พิมพ์ที่อยู่ / สถานที่ หรือกดใช้ตำแหน่งฉัน">
+    <div class="row"><button class="btn" id="myOriginBtn"><i class="fa-solid fa-location-crosshairs"></i> ใช้ตำแหน่งฉัน</button><button class="btn outline" id="clearOriginBtn">ล้างต้นทาง</button></div>
+    <label class="label">ปลายทาง</label>
+    <input id="destInput" placeholder="เลือกจาก Google Places หรือใช้หมุด">
+    <div class="row"><button class="btn" id="plannerSearchBtn"><i class="fa-solid fa-magnifying-glass"></i> ค้นหาปลายทาง</button><button class="btn outline" id="plannerPinBtn"><i class="fa-solid fa-map-pin"></i> ปักหมุดบนแผนที่</button></div>
+    <label class="label">วิธีเดินทาง</label>
+    <div class="segmented" id="modeSegments">
+      <button data-mode="DRIVING" class="active">🚗 รถยนต์</button><button data-mode="WALKING">🚶 เดิน</button><button data-mode="BICYCLING">🚲 จักรยาน</button><button data-mode="TRANSIT">🚆 Transit</button>
+    </div>
+    <div id="transitOptions" class="card" style="margin-top:9px;background:#06101f66;display:none">
+      <label class="label">เวลาออกเดินทาง</label><input id="departureInput" type="datetime-local">
+      <div class="grid2" style="margin-top:7px"><div><label class="label">รูปแบบ Transit</label><select id="transitPreference"><option value="FEWER_TRANSFERS">เปลี่ยนน้อย (Fewer transfers)</option><option value="LESS_WALKING">เดินน้อย (Less walking)</option></select></div><div><label class="label">ประเภทที่ยอมให้ใช้</label><select id="transitModes"><option value="ALL">ทั้งหมด</option><option value="BUS">รถเมล์</option><option value="RAIL">รถไฟ/รถไฟฟ้า</option><option value="BUS_RAIL">รถเมล์ + รถไฟ/รถไฟฟ้า</option></select></div></div>
+      <label class="label">ไปถึงเวลา</label><div class="row"><input id="arrivalInput" type="datetime-local" placeholder="ปล่อยว่างถ้าเลือกเวลาออก"><button class="btn ghost sm" id="clearArrivalBtn">ล้างเวลาไปถึง</button></div>
+    </div>
+    <button class="btn primary block" id="planBtn" style="margin-top:8px"><i class="fa-solid fa-diamond-turn-right"></i> คำนวณเส้นทาง</button>
+    <div id="routeMetrics" class="metric-grid" style="margin-top:9px;display:none"></div>
+  </div>
+  <div id="fuelCard" class="card" style="display:none">
+    <div class="title">ค่าใช้รถโดยประมาณ <span class="mini">ปรับได้เองใน Settings</span></div>
+    <div class="metric-grid" id="drivingCostMetrics"></div>
+  </div>
+  <div id="routeOptions"></div>
+  <div id="routeSteps"></div>
+</div>
+</section>
 
-        // Default Bangkok Center (Siam Area)
-        const DEFAULT_BKK_CENTER = [13.7456, 100.5342];
+<section id="placesPanel" class="panel">
+<div class="inner">
+  <div class="head"><h1><i class="fa-solid fa-building-circle-check"></i> สถานที่จาก Google Places</h1><p>ค้นหา/แสดงสถานที่ในพื้นที่แผนที่ พร้อมชื่อ, ที่อยู่, คะแนน, ราคา, เวลาเปิด, โทรศัพท์, เว็บไซต์ และลิงก์ไป Google Maps ตามฟิลด์ที่คุณเลือก</p></div>
+  <div class="card">
+    <div class="title">ค้นหา Places <span id="placesStatus" class="badge off">ยังไม่ค้นหา</span></div>
+    <div class="form-grid">
+      <div><label class="label">ประเภทหลัก</label><select id="placeTypeSelect"></select></div>
+      <div><label class="label">รัศมี</label><select id="placeRadius"><option value="500">500 ม.</option><option value="1000">1 กม.</option><option value="2000" selected>2 กม.</option><option value="5000">5 กม.</option><option value="10000">10 กม.</option><option value="50000">50 กม. (อาจเยอะ/แพง)</option></select></div>
+    </div>
+    <div class="row" style="margin-top:8px"><button class="btn primary" id="placesSearchBtn"><i class="fa-solid fa-location-crosshairs"></i> ค้นหารอบแผนที่</button><button class="btn outline" id="placesTextBtn"><i class="fa-solid fa-keyboard"></i> ค้นหาด้วยข้อความ</button><button class="btn warn" id="placesAllBtn"><i class="fa-solid fa-layer-group"></i> ค้นหาหลายประเภท</button></div>
+    <div class="warning" style="margin-top:8px">คำว่า “ทุกสถานที่” ไม่สามารถดึงฐาน Google ทั้งหมดทั้งโลกมาไว้ในไฟล์เดียวได้ ผลลัพธ์ขึ้นกับพื้นที่/ประเภท, จำนวนผลลัพธ์ต่อคำขอ และการเรียกเก็บเงินของ Google Maps Platform การค้นหาหลายประเภทจะเพิ่มจำนวน request.</div>
+  </div>
+  <div id="placesSummary"></div>
+  <div id="placesOutput" class="place-grid"></div>
+</div>
+</section>
 
-        // Simulated Real-time Vehicles moving in Bangkok
-        let vehicles = [
-            {
-                id: 'bus-511-1',
-                type: 'bus',
-                line: '511',
-                name: 'สาย 511 (ขสมก.)',
-                routeStr: 'ปากน้ำ - สายใต้ใหม่',
-                lat: 13.7420,
-                lng: 100.5400,
-                targetLat: 13.7460,
-                targetLng: 100.5300,
-                speed: 26,
-                nextStop: 'BTS อโศก',
-                eta: '3 นาที',
-                color: '#D32F2F',
-                icon: 'fa-bus'
-            },
-            {
-                id: 'bus-137-1',
-                type: 'bus',
-                line: '137',
-                name: 'สาย 137 (วนขวา)',
-                routeStr: 'รามคำแหง - รัชดาภิเษก',
-                lat: 13.7580,
-                lng: 100.5650,
-                targetLat: 13.7620,
-                targetLng: 100.5600,
-                speed: 31,
-                nextStop: 'MRT พระราม 9',
-                eta: '5 นาที',
-                color: '#D32F2F',
-                icon: 'fa-bus'
-            },
-            {
-                id: 'bts-sukhumvit-1',
-                type: 'bts',
-                line: 'BTS Green',
-                name: 'BTS สายสุขุมวิท',
-                routeStr: 'คูคต - เคหะฯ',
-                lat: 13.7450,
-                lng: 100.5350,
-                targetLat: 13.7380,
-                targetLng: 100.5600,
-                speed: 52,
-                nextStop: 'สถานีชิดลม',
-                eta: '1 นาที',
-                color: '#00A968',
-                icon: 'fa-train'
-            },
-            {
-                id: 'mrt-blue-1',
-                type: 'mrt',
-                line: 'MRT Blue',
-                name: 'MRT สายสีน้ำเงิน',
-                routeStr: 'หลักสอง - ท่าพระ',
-                lat: 13.7370,
-                lng: 100.5600,
-                targetLat: 13.7280,
-                targetLng: 100.5340,
-                speed: 48,
-                nextStop: 'สถานีสุขุมวิท',
-                eta: '2 นาที',
-                color: '#1976D2',
-                icon: 'fa-subway'
-            }
-        ];
+<section id="transitPanel" class="panel">
+<div class="inner">
+  <div class="head"><h1><i class="fa-solid fa-train-tram"></i> รถไฟฟ้า + Transit + สายรถ</h1><p>เลือกสาย/สถานีเพื่อเตรียมเส้นทางหรือใช้เป็นปลายทาง จากนั้นให้ Google Routes คำนวณเที่ยวเดินทางจริง ณ เวลาที่เลือก</p></div>
+  <div class="card">
+    <div class="title">สายและสถานี <span id="railState" class="badge off">STATIC DATABASE</span></div>
+    <div class="grid2"><div><label class="label">สาย</label><select id="railLine"></select></div><div><label class="label">สถานี</label><select id="railStation"></select></div></div>
+    <div class="row" style="margin-top:8px"><button class="btn primary" id="stationAsDestinationBtn">สถานีนี้เป็นปลายทาง</button><button class="btn outline" id="stationAsOriginBtn">สถานีนี้เป็นต้นทาง</button><button class="btn ghost" id="routeToStationBtn">คำนวณจากตำแหน่งฉัน</button></div>
+  </div>
+  <div id="railInfo"></div>
+  <div class="card"><div class="title">สถานีทั้งหมดในฐานแอป</div><div id="allStations" class="station-grid"></div></div>
+  <div class="card">
+    <div class="title">เวลา Transit ที่หาได้จาก Google Routes</div>
+    <div class="warning">เวลารถที่แสดงในเส้นทางจะเป็นเวลาออก/ถึงที่ระบบ Transit ของ Google หาได้สำหรับคำขอเส้นทางนั้น ไม่ใช่การเดาเองจากความถี่ และไม่ได้หมายความว่าเป็นตำแหน่ง GPS ของขบวนทุกคัน</div>
+    <button class="btn primary block" id="rerunTransitBtn" style="margin-top:8px">คำนวณ Transit ล่าสุดอีกครั้ง</button>
+  </div>
+</div>
+</section>
 
-        let vehicleMarkers = {};
-        let activeFilters = { bus: true, bts: true, mrt: true };
+<section id="busPanel" class="panel">
+<div class="inner">
+  <div class="head"><h1><i class="fa-solid fa-bus-simple"></i> สายรถเมล์กรุงเทพฯ + เส้นทางของสาย</h1><p>รายการสายรถเมล์จาก route relations ที่มีการทำแผนที่ใน OpenStreetMap และวาด geometry ของสายที่เลือกลงบนแผนที่ พร้อมค้นหาป้ายใกล้พื้นที่</p></div>
+  <div class="card">
+    <div class="title">ค้นหาทุกสายรถเมล์ในพื้นที่กรุงเทพฯ <span id="busStatus" class="badge off">ยังไม่โหลด</span></div>
+    <div class="row"><input id="busFilter" placeholder="กรองด้วยเลขสาย / ชื่อปลายทาง / ผู้ให้บริการ"><button class="btn primary" id="loadBusRoutesBtn"><i class="fa-solid fa-cloud-arrow-down"></i> โหลดสายทั้งหมด</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn outline" id="nearbyStopsBtn"><i class="fa-solid fa-location-dot"></i> ป้ายรถเมล์ใกล้ฉัน/แผนที่</button><button class="btn ghost" id="clearBusMapBtn">ล้างเส้นรถเมล์</button></div>
+    <div class="warning" style="margin-top:8px">“ทั้งหมด” หมายถึงทั้งหมดที่แหล่ง OpenStreetMap ส่งกลับในขอบเขตกรุงเทพฯ/พื้นที่ที่เลือกและที่มีการแมปข้อมูลไว้ ไม่ใช่การรับรองว่าครอบคลุมทุก operator หรือทุกเที่ยวรถในโลกจริง</div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="title">รายการสายรถเมล์</div><div id="busRouteList" class="bus-list"><div class="empty">กด “โหลดสายทั้งหมด”</div></div></div>
+    <div class="card"><div class="title">รายละเอียดสายที่เลือก</div><div id="busRouteDetail"><div class="empty">คลิกสายด้านซ้ายเพื่อวาดเส้นทาง</div></div></div>
+  </div>
+  <div class="card"><div class="title">แหล่งข้อมูลตารางเดินรถ</div><div class="row"><a class="btn outline" href="https://namtang-api.otp.go.th/download/namtang-gtfs.zip" target="_blank" rel="noopener">เปิด Namtang GTFS ของ OTP</a><a class="btn ghost" href="https://mobilitydatabase.org/feeds/gtfs/mdb-1831" target="_blank" rel="noopener">ดู feed/validation บน MobilityDatabase</a></div><div class="source">ใช้สำหรับตรวจสอบฐานข้อมูลตารางเดินรถแบบ GTFS เพิ่มเติม ส่วนการแสดงสาย/เส้นทางในแอปนี้ใช้ Overpass/OSM เป็นหลักเพื่อไม่ทำให้หน้าเว็บต้องแบกไฟล์ GTFS ขนาดใหญ่มาไว้ทั้งหมด</div></div>
+</div>
+</section>
 
-        window.onload = function() {
-            initLeafletMap();
-            initLiveVehicles();
-            renderLiveVehicleList();
-            startVehicleSimulationLoop();
-            startCountdownTimer();
-        };
+<section id="livePanel" class="panel">
+<div class="inner">
+  <div class="head"><h1><i class="fa-solid fa-satellite-dish"></i> Live vehicles adapter</h1><p>รองรับ endpoint JSON แบบเปิดเองสำหรับรถ/ขบวนจริง ถ้า provider ของคุณส่งตำแหน่งรถและเวลาเข้ามา ระบบจะวางรถบนแผนที่และรีเฟรชตามช่วงเวลา</p></div>
+  <div class="card">
+    <div class="title">ตั้งค่า Live feed <span id="liveStatus" class="badge off">OFF</span></div>
+    <label class="label">JSON endpoint</label><input id="liveEndpoint" placeholder="https://example.com/api/live-vehicles">
+    <div class="grid2" style="margin-top:8px"><div><label class="label">รีเฟรชทุก</label><select id="liveInterval"><option value="10000">10 วินาที</option><option value="20000" selected>20 วินาที</option><option value="30000">30 วินาที</option><option value="60000">60 วินาที</option></select></div><div><label class="label">ชนิด feed</label><select id="liveFeedType"><option value="generic">Generic JSON</option><option value="bus">Bus JSON</option><option value="rail">Rail JSON</option></select></div></div>
+    <div class="row" style="margin-top:8px"><button class="btn primary" id="saveLiveBtn">บันทึกและเริ่ม Live</button><button class="btn outline" id="refreshLiveBtn">รีเฟรชทันที</button><button class="btn danger" id="stopLiveBtn">หยุด Live</button></div>
+    <div class="subnote">รูปแบบ JSON ที่ระบบเข้าใจหลัก ๆ: <code>{"vehicles":[{"id":"...","line":"...","destination":"...","lat":13.75,"lon":100.50,"updatedAt":"...","speed":25,"bearing":120}]}</code> หรือ array ตรง ๆ ของรถ ใช้ reverse proxy ได้เมื่อ CORS ไม่เปิด</div>
+  </div>
+  <div id="liveVehicleList" class="list"></div>
+</div>
+</section>
 
-        function initLeafletMap() {
-            // Initialize Leaflet Map centered on Bangkok
-            map = L.map('map', {
-                zoomControl: false,
-                attributionControl: false
-            }).setView(DEFAULT_BKK_CENTER, 14);
+<section id="lifePanel" class="panel">
+<div class="inner">
+  <div class="head"><h1><i class="fa-solid fa-heart-circle-plus"></i> ชีวิตการเดินทาง + Settings</h1><p>บันทึกสถานที่, ประวัติการเดินทาง, ค่าประเมินน้ำมัน, API keys, endpoints และค่าการแสดงผลทั้งหมดในเครื่องนี้</p></div>
+  <div class="card">
+    <div class="title">บันทึกสถานที่ปัจจุบัน</div>
+    <div class="grid2"><input id="placeName" placeholder="บ้าน / ที่ทำงาน / โรงเรียน"><select id="placeType"><option>บ้าน</option><option>ที่ทำงาน</option><option>โรงเรียน</option><option>ฟิตเนส</option><option>อื่น ๆ</option></select></div>
+    <button class="btn primary block" id="saveNamedBtn" style="margin-top:7px">บันทึกตำแหน่ง</button>
+  </div>
+  <div id="savedPlaces"></div>
+  <div class="card">
+    <div class="title">ติดตาม GPS</div>
+    <div class="grid2"><button class="btn primary" id="trackBtn">เริ่มติดตาม GPS</button><button class="btn danger" id="clearHistoryBtn">ล้างประวัติ</button></div>
+    <div id="trackingStats" class="muted" style="margin-top:8px;font-size:.65rem">ยังไม่ได้เริ่มติดตาม</div>
+  </div>
+  <div id="tripHistory"></div>
+  <div class="card" id="settingsCard">
+    <div class="title">Google Maps Platform</div>
+    <label class="label">Google Maps JavaScript API Key</label><input id="googleKey" type="password" autocomplete="off" placeholder="AIza...">
+    <label class="label">Google Map ID (optional; DEMO_MAP_ID ใช้ได้สำหรับเริ่มต้น)</label><input id="googleMapId" placeholder="DEMO_MAP_ID">
+    <div class="row" style="margin-top:7px"><button class="btn primary" id="saveGoogleBtn">โหลด/รีโหลด Google Maps</button><button class="btn ghost" id="clearGoogleBtn">ล้าง Key</button></div>
+    <div class="warning" style="margin-top:8px">สำหรับ production ให้จำกัด API key ด้วย HTTP referrer และเปิดเฉพาะ API ที่ต้องใช้ พร้อมกำหนด quota/budget ของ Google Cloud อย่าใช้ server secret ในไฟล์นี้</div>
+  </div>
+  <div class="card">
+    <div class="title">ค่าใช้รถ</div>
+    <div class="grid3"><div><label class="label">อัตราสิ้นเปลือง (กม./ลิตร)</label><input id="fuelKmL" type="number" min="1" step="0.1"></div><div><label class="label">ราคาน้ำมัน (บาท/ลิตร)</label><input id="fuelPrice" type="number" min="0" step="0.1"></div><div><label class="label">ค่าทางด่วนโดยประมาณ</label><input id="defaultToll" type="number" min="0" step="1"></div></div>
+    <button class="btn outline block" id="saveCostBtn" style="margin-top:8px">บันทึกค่า</button>
+  </div>
+  <div class="card">
+    <div class="title">Data endpoints</div>
+    <label class="label">Rail realtime JSON endpoint</label><input id="railEndpoint" placeholder="https://example.com/api/rail">
+    <label class="label">Bus/vehicle realtime JSON endpoint</label><input id="busLiveEndpoint" placeholder="https://example.com/api/bus-live">
+    <label class="label">Overpass endpoint</label><input id="overpassEndpoint" placeholder="https://overpass-api.de/api/interpreter">
+    <div class="row" style="margin-top:8px"><button class="btn primary" id="saveEndpointBtn">บันทึก endpoint</button><button class="btn ghost" id="resetEndpointBtn">คืนค่าเริ่มต้น</button></div>
+  </div>
+  <div class="card">
+    <div class="title">เครื่องมือระบบ</div>
+    <div class="row"><button class="btn" id="shareAppBtn">แชร์แอปนี้</button><button class="btn outline" id="exportDataBtn">Export ข้อมูลของฉัน</button><button class="btn outline" id="importDataBtn">Import JSON</button><button class="btn danger" id="wipeDataBtn">ล้างข้อมูลในเครื่อง</button></div>
+    <input id="importFile" type="file" accept="application/json" hidden>
+    <div class="source">ข้อมูลบันทึกใน localStorage ของเบราว์เซอร์ ยกเว้นข้อมูลที่ส่งไปยังบริการภายนอกเมื่อคุณสั่งให้แอปค้นหา/คำนวณ</div>
+  </div>
+  <div class="card">
+    <div class="title">ที่มาข้อมูล/ข้อจำกัด</div>
+    <div class="list">
+      <div class="item"><b>Google Maps Platform</b><small>แผนที่, Places, Routes/Transit — ข้อมูลและการคิดเงินตามผลิตภัณฑ์ Google Maps Platform</small></div>
+      <div class="item"><b>OpenStreetMap / Overpass</b><small>สายรถเมล์/ป้ายรถเมล์จาก route relations และวัตถุ OSM ตามที่มีการทำแผนที่ พร้อม attribution</small></div>
+      <div class="item"><b>OTP Namtang GTFS</b><small>แหล่งข้อมูล GTFS สาธารณะสำหรับตารางและเครือข่ายขนส่งของไทย ให้ลิงก์ไว้ในหน้า Bus</small></div>
+    </div>
+  </div>
+</div>
+</section>
+</main>
 
-            // Dark styled CartoDB Tiles for clean modern transit look
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                maxZoom: 19,
-                subdomains: 'abcd'
-            }).addTo(map);
+<nav aria-label="เมนูหลัก">
+  <button class="nav active" data-tab="mapPanel"><i class="fa-solid fa-map"></i>แผนที่</button>
+  <button class="nav" data-tab="plannerPanel"><i class="fa-solid fa-route"></i>วางแผน</button>
+  <button class="nav" data-tab="placesPanel"><i class="fa-solid fa-building"></i>สถานที่</button>
+  <button class="nav" data-tab="transitPanel"><i class="fa-solid fa-train-subway"></i>Transit</button>
+  <button class="nav" data-tab="busPanel"><i class="fa-solid fa-bus"></i>รถเมล์</button>
+  <button class="nav" data-tab="lifePanel"><i class="fa-solid fa-sliders"></i>ตั้งค่า</button>
+</nav>
+<div id="toast" role="status" aria-live="polite"></div>
 
-            // Add Leaflet zoom control to top left
-            L.control.zoom({ position: 'topleft' }).addTo(map);
+<div id="routeModal" class="modal"><div class="modal-card"><div class="modal-head"><b id="routeModalTitle">รายละเอียด</b><button class="icon-btn" data-close-modal="routeModal"><i class="fa-solid fa-xmark"></i></button></div><div id="routeModalBody"></div></div></div>
+<div id="importModal" class="modal"><div class="modal-card"><div class="modal-head"><b>Import JSON</b><button class="icon-btn" data-close-modal="importModal"><i class="fa-solid fa-xmark"></i></button></div><p class="subnote">เลือกไฟล์ที่ Export จากแอปนี้ แล้วระบบจะ merge/replace เฉพาะข้อมูล local ของแอป</p><button class="btn primary block" id="chooseImportBtn" style="margin-top:10px">เลือกไฟล์ JSON</button></div></div>
 
-            // Set up Simulated User Location Marker
-            const userIcon = L.divIcon({
-                className: 'user-location-marker-container',
-                html: `<div class="user-location-marker"></div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-            });
+<script>
+"use strict";
 
-            userMarker = L.marker(DEFAULT_BKK_CENTER, { icon: userIcon }).addTo(map);
-            userMarker.bindPopup("<b>ตำแหน่งของคุณ</b><br>สยามพารากอน กรุงเทพฯ").openPopup();
+/* =============================================================
+   01. APP CONFIG
+   ============================================================= */
+const APP = {
+  VERSION: "2026.09-google-pro",
+  defaultCenter: {lat:13.7563,lng:100.5018},
+  bkkBounds: {south:13.30,west:100.20,north:14.10,east:100.95},
+  overpassDefault: "https://overpass-api.de/api/interpreter",
+  nominatimDefault: "https://nominatim.openstreetmap.org",
+  otpGtfs: "https://namtang-api.otp.go.th/download/namtang-gtfs.zip",
+  mobilityDatabase: "https://mobilitydatabase.org/feeds/gtfs/mdb-1831",
+  googleScriptBase: "https://maps.googleapis.com/maps/api/js",
+  defaultFuelKmL: 13,
+  defaultFuelPrice: 35,
+  defaultToll: 0,
+  maxPlacesOnMap: 250,
+  liveMaxAgeMinutes: 5,
+  placeTypes: [
+    ["restaurant","ร้านอาหาร"],["cafe","คาเฟ่"],["bar","บาร์"],["bakery","เบเกอรี่"],
+    ["shopping_mall","ห้างสรรพสินค้า"],["supermarket","ซูเปอร์มาร์เก็ต"],["convenience_store","ร้านสะดวกซื้อ"],
+    ["department_store","ห้าง/แผนก"],["clothing_store","เสื้อผ้า"],["electronics_store","อุปกรณ์อิเล็กทรอนิกส์"],
+    ["hospital","โรงพยาบาล"],["pharmacy","ร้านขายยา"],["doctor","คลินิก/แพทย์"],["dentist","ทันตแพทย์"],
+    ["bank","ธนาคาร"],["atm","ATM"],["police","ตำรวจ"],["fire_station","ดับเพลิง"],
+    ["post_office","ไปรษณีย์"],["school","โรงเรียน"],["university","มหาวิทยาลัย"],["gym","ฟิตเนส"],
+    ["lodging","ที่พัก"],["tourist_attraction","สถานที่ท่องเที่ยว"],["museum","พิพิธภัณฑ์"],["park","สวน"],
+    ["parking","ที่จอดรถ"],["gas_station","ปั๊มน้ำมัน"],["transit_station","สถานีขนส่ง"],["bus_station","สถานีรถเมล์"]
+  ]
+};
 
-            // Strava Path Polyline initialization
-            stravaPolyline = L.polyline([], {
-                color: '#FF5722',
-                weight: 5,
-                opacity: 0.9,
-                dashArray: '8, 8'
-            }).addTo(map);
-        }
+/* =============================================================
+   02. RAIL DATABASE FROM THE PREVIOUS APP
+   ============================================================= */
+const RAIL = {
+  bts_sukhumvit:{name:"BTS สุขุมวิท",badge:"bts",stations:["N24 คูคต","N23 แยก คปอ.","N22 พิพิธภัณฑ์กองทัพอากาศ","N21 โรงพยาบาลภูมิพลอดุลยเดช","N20 สะพานใหม่","N19 สายหยุด","N18 พหลโยธิน 59","N17 วัดพระศรีมหาธาตุ","N16 กรมทหารราบที่ 11","N15 บางบัว","N14 กรมป่าไม้","N13 มหาวิทยาลัยเกษตรศาสตร์","N12 เสนานิคม","N11 รัชโยธิน","N10 พหลโยธิน 24","N9 ห้าแยกลาดพร้าว","N8 หมอชิต","N7 สะพานควาย","N5 อารีย์","N4 สนามเป้า","N3 อนุสาวรีย์ชัยสมรภูมิ","N2 พญาไท","N1 ราชเทวี","CEN สยาม","E1 ชิดลม","E2 เพลินจิต","E3 นานา","E4 อโศก","E5 พร้อมพงษ์","E6 ทองหล่อ","E7 เอกมัย","E8 พระโขนง","E9 อ่อนนุช","E10 บางจาก","E11 ปุณณวิถี","E12 อุดมสุข","E13 บางนา","E14 แบริ่ง","E15 สำโรง","E16 ปู่เจ้า","E17 ช้างเอราวัณ","E18 โรงเรียนนายเรือ","E19 ปากน้ำ","E20 ศรีนครินทร์","E21 แพรกษา","E22 สายลวด","E23 เคหะฯ"]},
+  bts_silom:{name:"BTS สีลม",badge:"bts",stations:["W1 สนามกีฬาแห่งชาติ","CEN สยาม","S1 ราชดำริ","S2 ศาลาแดง","S3 ช่องนนทรี","S4 เซนต์หลุยส์","S5 สุรศักดิ์","S6 สะพานตากสิน","S7 กรุงธนบุรี","S8 วงเวียนใหญ่","S9 โพธิ์นิมิตร","S10 ตลาดพลู","S11 วุฒากาศ","S12 บางหว้า"]},
+  bts_gold:{name:"BTS สีทอง",badge:"yellow",stations:["G1 กรุงธนบุรี","G2 เจริญนคร","G3 คลองสาน"]},
+  mrt_blue:{name:"MRT สีน้ำเงิน",badge:"mrt",stations:["BL01 ท่าพระ","BL02 จรัญฯ 13","BL03 ไฟฉาย","BL04 บางขุนนนท์","BL05 บางยี่ขัน","BL06 สิรินธร","BL07 บางพลัด","BL08 บางอ้อ","BL09 บางโพ","BL10 เตาปูน","BL11 บางซื่อ","BL12 กำแพงเพชร","BL13 สวนจตุจักร","BL14 พหลโยธิน","BL15 ลาดพร้าว","BL16 รัชดาภิเษก","BL17 สุทธิสาร","BL18 ห้วยขวาง","BL19 ศูนย์วัฒนธรรมแห่งประเทศไทย","BL20 พระราม 9","BL21 เพชรบุรี","BL22 สุขุมวิท","BL23 ศูนย์การประชุมแห่งชาติสิริกิติ์","BL24 คลองเตย","BL25 ลุมพินี","BL26 สีลม","BL27 สามย่าน","BL28 หัวลำโพง","BL29 วัดมังกร","BL30 สามยอด","BL31 สนามไชย","BL32 อิสรภาพ","BL33 บางไผ่","BL34 บางหว้า","BL35 เพชรเกษม 48","BL36 ภาษีเจริญ","BL37 บางแค","BL38 หลักสอง"]},
+  mrt_purple:{name:"MRT สีม่วง",badge:"purple",stations:["PP01 คลองบางไผ่","PP02 ตลาดบางใหญ่","PP03 สามแยกบางใหญ่","PP04 บางพลู","PP05 บางรักใหญ่","PP06 บางรักน้อยท่าอิฐ","PP07 ไทรม้า","PP08 สะพานพระนั่งเกล้า","PP09 แยกนนทบุรี 1","PP10 บางกระสอ","PP11 ศูนย์ราชการนนทบุรี","PP12 กระทรวงสาธารณสุข","PP13 แยกติวานนท์","PP14 วงศ์สว่าง","PP15 บางซ่อน","PP16 เตาปูน"]},
+  mrt_yellow:{name:"MRT สีเหลือง",badge:"yellow",stations:["YL01 ลาดพร้าว","YL02 ภาวนา","YL03 โชคชัย 4","YL04 ลาดพร้าว 71","YL05 ลาดพร้าว 83","YL06 มหาดไทย","YL07 ลาดพร้าว 101","YL08 บางกะปิ","YL09 แยกลำสาลี","YL10 ศรีกรีฑา","YL11 หัวหมาก","YL12 กลันตัน","YL13 ศรีนุช","YL14 ศรีนครินทร์ 38","YL15 สวนหลวง ร.9","YL16 ศรีอุดม","YL17 ศรีเอี่ยม","YL18 ศรีลาซาล","YL19 ศรีแบริ่ง","YL20 ศรีด่าน","YL21 ศรีเทพา","YL22 ทิพวัล","YL23 สำโรง"]},
+  mrt_pink:{name:"MRT สีชมพู",badge:"pink",stations:["PK01 ศูนย์ราชการนนทบุรี","PK02 แคราย","PK03 สนามบินน้ำ","PK04 สามัคคี","PK05 ชลประทาน","PK06 ปากเกร็ด","PK07 เลี่ยงเมืองปากเกร็ด","PK08 แจ้งวัฒนะ-ปากเกร็ด 28","PK09 ศรีรัช","PK10 เมืองทองธานี","PK11 แจ้งวัฒนะ 14","PK12 ศูนย์ราชการเฉลิมพระเกียรติ","PK13 โทรคมนาคมแห่งชาติ","PK14 หลักสี่","PK15 ราชภัฏพระนคร","PK16 วัดพระศรีมหาธาตุ","PK17 รามอินทรา 3","PK18 ลาดปลาเค้า","PK19 รามอินทรา กม.4","PK20 มัยลาภ","PK21 วัชรพล","PK22 รามอินทรา กม.6","PK23 คู้บอน","PK24 รามอินทรา กม.9","PK25 วงแหวนรามอินทรา","PK26 นพรัตน์","PK27 บางชัน","PK28 เศรษฐบุตรบำเพ็ญ","PK29 ตลาดมีนบุรี","PK30 มีนบุรี"]},
+  red_dark:{name:"SRT สายสีแดงเข้ม",badge:"red",stations:["RN01 กรุงเทพอภิวัฒน์","RN02 จตุจักร","RN03 วัดเสมียนนารี","RN04 บางเขน","RN05 ทุ่งสองห้อง","RN06 หลักสี่","RN07 การเคหะ","RN08 ดอนเมือง","RN09 หลักหก","RN10 รังสิต"]},
+  red_light:{name:"SRT สายสีแดงอ่อน",badge:"red",stations:["RW01 กรุงเทพอภิวัฒน์","RW02 บางซ่อน","RW03 พระราม 6","RW04 บางกรวย-กฟผ.","RW05 บางบำหรุ","RW06 ตลิ่งชัน"]},
+  arl:{name:"ARL แอร์พอร์ตลิงก์",badge:"rail",stations:["A1 พญาไท","A2 ราชปรารภ","A3 มักกะสัน","A4 รามคำแหง","A5 หัวหมาก","A6 บ้านทับช้าง","A7 ลาดกระบัง","A8 สุวรรณภูมิ"]}
+};
 
-        function initLiveVehicles() {
-            vehicles.forEach(v => {
-                const badgeHtml = `
-                    <div class="vehicle-badge" style="background-color: ${v.color}; width: 36px; height: 36px;">
-                        <i class="fa-solid ${v.icon}"></i>
-                    </div>
-                `;
-                
-                const customIcon = L.divIcon({
-                    className: 'custom-vehicle-icon',
-                    html: badgeHtml,
-                    iconSize: [36, 36],
-                    iconAnchor: [18, 18]
-                });
+/* =============================================================
+   03. STATE + STORAGE
+   ============================================================= */
+const state = {
+  map:null,gMap:null,gAdvancedMarkers:[],gInfoWindow:null,gAutocomplete:null,
+  fallbackMapMode:false,googleReady:false,googleLoading:false,
+  userPos:null,userMarker:null,accuracyCircle:null,pin:null,pinEnabled:false,
+  placeMarkers:[],placeObjects:new Map(),places:[],busLayer:null,busMarkers:[],busRoutes:[],selectedBusRoute:null,
+  liveMarkers:[],liveVehicles:[],liveTimer:null,routePolylines:[],routeMarkers:[],routeResults:[],selectedRouteIndex:0,
+  routeOrigin:null,routeDestination:null,transitSegments:[],activeTransitStep:null,
+  geoWatch:null,tracking:false,trackPoints:[],tripStart:null,
+  saved:loadJSON("bkk_saved_places",[]),history:loadJSON("bkk_trip_history",[]),
+  requestSerial:0,lastPlacesCenter:null,lastLiveAt:null
+};
 
-                const marker = L.marker([v.lat, v.lng], { icon: customIcon }).addTo(map);
-                
-                // Click handler to open bottom vehicle info card
-                marker.on('click', () => {
-                    showVehicleCard(v);
-                });
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+const sleep = ms => new Promise(resolve=>setTimeout(resolve,ms));
+const num = v => Number(v)||0;
+const fmtNum = (v,d=0) => Number(v||0).toLocaleString("th-TH",{maximumFractionDigits:d});
+const formatDistance = m => num(m)>=1000?(num(m)/1000).toFixed(num(m)>=10000?1:2)+" กม.":Math.round(num(m))+" ม.";
+const formatDurationMs = ms => {
+  const m=Math.max(0,Math.round(num(ms)/60000));
+  return m<60?m+" นาที":Math.floor(m/60)+" ชม."+(m%60?" "+m%60+" นาที":"");
+};
+const formatTime = d => d?new Date(d).toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}):"-";
+const formatDateTime = d => d?new Date(d).toLocaleString("th-TH",{dateStyle:"short",timeStyle:"short"}):"-";
+const toLocalDateTimeValue = d => {
+  const x=new Date(d);const pad=n=>String(n).padStart(2,"0");
+  return x.getFullYear()+"-"+pad(x.getMonth()+1)+"-"+pad(x.getDate())+"T"+pad(x.getHours())+":"+pad(x.getMinutes());
+};
+function loadJSON(key,fallback){try{const v=JSON.parse(localStorage.getItem(key)||"null");return v??fallback}catch{return fallback}}
+function saveJSON(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true}catch(e){toast("บันทึกข้อมูลในเครื่องไม่สำเร็จ");return false}}
+function cfg(key,fallback=""){try{return localStorage.getItem(key)||fallback}catch{return fallback}}
+function setCfg(key,value){try{if(value==null||value==="")localStorage.removeItem(key);else localStorage.setItem(key,value)}catch{toast("บันทึกการตั้งค่าไม่สำเร็จ")}}
+function toast(message,ms=2800){const el=$("toast");if(!el)return;el.textContent=String(message);el.classList.add("show-toast");clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove("show-toast"),ms)}
+function setProvider(kind,message){const el=$("providerStatus");el.style.color=kind==="ok"?"#86efac":kind==="err"?"#fda4af":"#fbbf24";el.innerHTML='<span class="dot"></span><span>'+esc(message)+'</span>'}
+function setBusy(btn,busy,text){if(!btn)return;if(busy){btn.disabled=true;btn.dataset.old=btn.innerHTML;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> '+esc(text)}else{btn.disabled=false;if(btn.dataset.old)btn.innerHTML=btn.dataset.old}}
+function validCoord(lat,lng){return Number.isFinite(Number(lat))&&Number.isFinite(Number(lng))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lng))<=180}
+function haversine(a,b){const R=6371000,p=Math.PI/180,dLat=(b.lat-a.lat)*p,dLon=(b.lng-a.lng)*p;const z=Math.sin(dLat/2)**2+Math.cos(a.lat*p)*Math.cos(b.lat*p)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(z))}
+function currentMapCenter(){if(state.gMap){const c=state.gMap.getCenter();return c?{lat:c.lat(),lng:c.lng()}:APP.defaultCenter}if(state.map&&state.map.getCenter){const c=state.map.getCenter();return{lat:c.lat,lng:c.lng}}return APP.defaultCenter}
+function mapsLocation(pos){return {lat:num(pos.lat),lng:num(pos.lng??pos.lon)}}
 
-                vehicleMarkers[v.id] = marker;
-            });
-        }
+/* =============================================================
+   04. TABS + MODALS
+   ============================================================= */
+function switchTab(id){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===id));
+  document.querySelectorAll(".nav").forEach(b=>b.classList.toggle("active",b.dataset.tab===id));
+  if(id==="mapPanel")setTimeout(()=>window.google?.maps?google.maps.event.trigger(state.gMap,"resize"):void 0,80);
+  if(id==="lifePanel")renderSavedPlaces();
+  if(id==="busPanel")renderBusRoutes();
+}
+document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>switchTab(b.dataset.tab)));
+function openModal(id){$(id)?.classList.add("show")}
+function closeModal(id){$(id)?.classList.remove("show")}
+document.querySelectorAll("[data-close-modal]").forEach(b=>b.addEventListener("click",()=>closeModal(b.dataset.closeModal)));
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("show")}));
 
-        // Animate vehicles smoothly to simulate live movement
-        function startVehicleSimulationLoop() {
-            setInterval(() => {
-                vehicles.forEach(v => {
-                    // Slight step towards target
-                    const step = 0.0003;
-                    if (v.lat < v.targetLat) v.lat += step * (Math.random() * 0.8 + 0.2);
-                    else v.lat -= step * (Math.random() * 0.8 + 0.2);
+/* =============================================================
+   05. GOOGLE MAPS LOADER
+   ============================================================= */
+let googleBootPromise=null;
+function loadGoogleMapsScript(key){
+  if(window.google?.maps?.importLibrary)return Promise.resolve();
+  if(googleBootPromise)return googleBootPromise;
+  googleBootPromise=new Promise((resolve,reject)=>{
+    const cb="__bkkGoogleMapsBoot";
+    window[cb]=()=>{delete window[cb];resolve()};
+    const old=document.getElementById("googleMapsLoader");
+    if(old){old.addEventListener("error",()=>reject(new Error("Google Maps script load failed")));return}
+    const s=document.createElement("script");s.id="googleMapsLoader";s.async=true;s.defer=true;
+    s.src=APP.googleScriptBase+"?key="+encodeURIComponent(key)+"&v=weekly&loading=async&libraries=places,marker,routes&callback="+cb;
+    s.onerror=()=>{delete window[cb];reject(new Error("Google Maps script load failed"))};
+    document.head.appendChild(s);
+  });
+  return googleBootPromise;
+}
+async function initGoogleMaps(){
+  const key=cfg("bkk_google_key");
+  if(!key){
+    setProvider("warn","Google Maps ยังไม่มี API key — ใช้โหมดสำรอง");
+    initFallbackMap();
+    return false;
+  }
+  if(state.googleReady&&state.gMap)return true;
+  state.googleLoading=true;setProvider("warn","กำลังโหลด Google Maps Platform…");
+  try{
+    await loadGoogleMapsScript(key);
+    const [{Map,InfoWindow}]=await Promise.all([google.maps.importLibrary("maps")]);
+    await google.maps.importLibrary("core");
+    const {AdvancedMarkerElement}=await google.maps.importLibrary("marker");
+    const {Place}=await google.maps.importLibrary("places");
+    state.googleReady=true;
+    state.googleClasses={Map,InfoWindow,AdvancedMarkerElement,Place};
+    const mapId=cfg("bkk_google_map_id","DEMO_MAP_ID")||"DEMO_MAP_ID";
+    state.gMap=new Map($("map"),{center:APP.defaultCenter,zoom:12,mapId,fullscreenControl:true,streetViewControl:false,mapTypeControl:true,gestureHandling:"greedy"});
+    state.gInfoWindow=new InfoWindow();
+    state.fallbackMapMode=false;
+    $("map").classList.remove("hidden");
+    $("mapFallback").classList.remove("show");
+    document.body.classList.add("using-google");
+    setProvider("ok","Google Maps พร้อมใช้งาน");
+    setupGoogleAutocomplete();
+    state.gMap.addListener("click",e=>{if(state.pinEnabled&&e.latLng)movePin({lat:e.latLng.lat(),lng:e.latLng.lng()},true)});
+    if(state.userPos)renderUserOnGoogle();
+    toast("Google Maps พร้อมแล้ว");
+    return true;
+  }catch(e){
+    console.error(e);state.googleReady=false;state.googleLoading=false;
+    setProvider("err","Google Maps โหลดไม่สำเร็จ — ตรวจ key/API/quota");
+    initFallbackMap();toast("Google Maps ใช้งานไม่ได้ ระบบสลับไปแผนที่สำรอง");return false;
+  }finally{state.googleLoading=false}
+}
 
-                    if (v.lng < v.targetLng) v.lng += step * (Math.random() * 0.8 + 0.2);
-                    else v.lng -= step * (Math.random() * 0.8 + 0.2);
+/* =============================================================
+   06. FALLBACK MAP
+   ============================================================= */
+let fallbackMapLoaded=false;
+function initFallbackMap(){
+  if(fallbackMapLoaded)return;
+  fallbackMapLoaded=true;
+  const host=$("mapFallback");host.classList.add("show");$("map").classList.add("hidden");
+  const key=cfg("bkk_google_embed_key","");
+  if(key){
+    host.innerHTML='<iframe title="แผนที่สำรอง" loading="lazy" allowfullscreen src="https://www.google.com/maps/embed/v1/view?key='+encodeURIComponent(key)+'&center='+APP.defaultCenter.lat+','+APP.defaultCenter.lng+'&zoom=12"></iframe>';
+  }else{
+    host.innerHTML='<div style="height:100%;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 30%,#123458,#06101f)"><div style="max-width:520px;text-align:center"><div style="font-size:3rem">🗺️</div><h2 style="margin-top:8px">ต้องใส่ Google Maps API key</h2><p style="color:#96a8bf;font-size:.72rem;line-height:1.6;margin-top:7px">ไปที่ ตั้งค่า → Google Maps Platform แล้วใส่ key ที่เปิด Maps JavaScript API และ Places/Routes API จาก Google Cloud จากนั้นกดโหลด Google Maps</p><button class="btn primary" style="margin-top:12px" onclick="switchTab(\'lifePanel\')">เปิดตั้งค่า</button></div></div>';
+  }
+}
 
-                    // Update Leaflet marker position
-                    if (vehicleMarkers[v.id]) {
-                        vehicleMarkers[v.id].setLatLng([v.lat, v.lng]);
-                    }
-                });
+/* =============================================================
+   07. GOOGLE AUTOCOMPLETE + PLACE SEARCH
+   ============================================================= */
+async function setupGoogleAutocomplete(){
+  try{
+    const {PlaceAutocompleteElement}=await google.maps.importLibrary("places");
+    const widget=new PlaceAutocompleteElement({includedRegionCodes:["th"],placeholder:"ค้นหาสถานที่ / สถานี / ที่อยู่"});
+    widget.style.width="100%";$("googleSearchHost").replaceChildren(widget);state.gAutocomplete=widget;
+    widget.addEventListener("gmp-select",async event=>{
+      const prediction=event.placePrediction;if(!prediction)return;
+      const place=prediction.toPlace();
+      await place.fetchFields({fields:["displayName","formattedAddress","location","viewport","id","googleMapsURI"]});
+      if(place.location){state.routeDestination={place:place,lat:place.location.lat(),lng:place.location.lng(),name:place.displayName||place.formattedAddress||"ปลายทาง"};
+        setDestinationUI(state.routeDestination);centerOn(place.location);showPlaceInfo(place)}
+    });
+  }catch(e){console.warn("Autocomplete init",e)}
+}
+async function googleTextSearch(query,origin=null,max=10){
+  if(!state.googleReady)throw new Error("Google Maps ยังไม่พร้อม");
+  const {Place}=state.googleClasses||await google.maps.importLibrary("places");
+  const fields=["displayName","location","formattedAddress","googleMapsURI","id","rating","userRatingCount","priceLevel","currentOpeningHours","regularOpeningHours","nationalPhoneNumber","websiteURI","primaryType","primaryTypeDisplayName","businessStatus","types"];
+  const req={textQuery:String(query),fields,maxResultCount:Math.min(20,Math.max(1,max)),language:"th",region:"TH"};
+  if(origin&&validCoord(origin.lat,origin.lng))req.locationBias={center:mapsLocation(origin),radius:15000};
+  const res=await Place.searchByText(req);return res.places||[];
+}
+async function googleNearbySearch(type,radius=2000,center=null,max=20){
+  if(!state.googleReady)throw new Error("Google Maps ยังไม่พร้อม");
+  const {Place,SearchNearbyRankPreference}=await google.maps.importLibrary("places");
+  const c=center||currentMapCenter();
+  const req={fields:["displayName","location","formattedAddress","googleMapsURI","id","rating","userRatingCount","priceLevel","currentOpeningHours","regularOpeningHours","nationalPhoneNumber","websiteURI","primaryType","primaryTypeDisplayName","businessStatus","types"],locationRestriction:{center:c,radius:Math.min(50000,Math.max(50,Number(radius)||2000))},includedPrimaryTypes:[type],maxResultCount:Math.min(20,Math.max(1,max)),rankPreference:SearchNearbyRankPreference.POPULARITY,language:"th",region:"TH"};
+  const res=await Place.searchNearby(req);return res.places||[];
+}
+function centerOn(location,zoom=16){if(state.gMap&&location){state.gMap.panTo(location);if(zoom)state.gMap.setZoom(zoom)}}
+function placeText(place){return place?.displayName||"สถานที่"}
+function placeLocation(place){if(!place?.location)return null;return {lat:place.location.lat(),lng:place.location.lng()}}
+function priceGlyph(p){const x=String(p||"");if(x.includes("FREE"))return"ฟรี";if(x.includes("INEXPENSIVE"))return"฿";if(x.includes("MODERATE"))return"฿฿";if(x.includes("EXPENSIVE"))return"฿฿฿";if(x.includes("VERY_EXPENSIVE"))return"฿฿฿฿";return"-"}
+function placeOpenText(place){const h=place?.currentOpeningHours||place?.regularOpeningHours;if(!h)return"ไม่ระบุเวลา";return h.openNow===true?"เปิดอยู่":h.openNow===false?"ปิดอยู่":"มีข้อมูลเวลาเปิด"}
+async function showPlaceInfo(place){
+  const loc=placeLocation(place);if(!loc||!state.gInfoWindow||!state.googleReady)return;
+  const content=document.createElement("div");content.style.cssText="max-width:300px;font:13px/1.45 system-ui,sans-serif;color:#111";
+  const title=document.createElement("strong");title.textContent=placeText(place);content.appendChild(title);
+  const lines=[place.formattedAddress||"",place.rating?`★ ${place.rating} (${place.userRatingCount||0})`:"",place.priceLevel?`ราคา ${priceGlyph(place.priceLevel)}`:"",place.nationalPhoneNumber||""];lines.filter(Boolean).forEach(t=>{const p=document.createElement("div");p.textContent=t;content.appendChild(p)});
+  if(place.googleMapsURI){const a=document.createElement("a");a.href=place.googleMapsURI;a.target="_blank";a.rel="noopener";a.textContent="เปิดใน Google Maps";content.appendChild(a)}
+  state.gInfoWindow.setContent(content);state.gInfoWindow.setPosition(loc);state.gInfoWindow.open({map:state.gMap});centerOn(loc,16);
+}
 
-                // Update Strava live tracking if enabled
-                if (isTrackingStrava) {
-                    simulateStravaMovement();
-                }
+/* =============================================================
+   08. MARKERS / PLACE LAYERS
+   ============================================================= */
+function clearPlaceMarkers(){
+  state.placeMarkers.forEach(m=>{try{m.map=null}catch{}try{m.setMap?.(null)}catch{}});
+  state.placeMarkers=[];state.placeObjects.clear();
+  if(state.map&&state.placeMarkersLayer)state.placeMarkersLayer.clearLayers?.();
+  $("hudPlaces").textContent="0";
+}
+function makeAdvancedContent(label,kind="place"){
+  const el=document.createElement("div");el.className="place-dot";el.style.cssText="width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:"+(kind==="bus"?"#0f766e":kind==="live"?"#7c3aed":"#2563eb")+";color:#fff;border:2px solid rgba(255,255,255,.85);box-shadow:0 5px 15px rgba(0,0,0,.4);font-size:14px";el.textContent=label;return el;
+}
+function addGooglePlaceMarker(place){
+  const loc=placeLocation(place);if(!loc||!state.googleReady)return;
+  const {AdvancedMarkerElement}=state.googleClasses;
+  const marker=new AdvancedMarkerElement({map:state.gMap,position:loc,title:placeText(place),content:makeAdvancedContent("•","place"),gmpClickable:true});
+  marker.addListener("click",()=>showPlaceInfo(place));state.placeMarkers.push(marker);state.placeObjects.set(place.id||placeText(place),place);
+}
+function addFallbackMarker(lat,lng,label,popup){
+  if(!state.fallbackMapMode||!window.L||!state.map)return null;
+  return L.marker([lat,lng]).bindPopup(popup||esc(label)).addTo(state.map);
+}
+function renderPlaces(places,append=false){
+  if(!append)clearPlaceMarkers();
+  const mapById=new Map();state.places.forEach(p=>mapById.set(p.id||placeText(p),p));
+  const beforeIds=new Set(state.places.map(p=>p.id||placeText(p)));
+  places.forEach(p=>mapById.set(p.id||placeText(p),p));
+  state.places=[...mapById.values()].slice(0,APP.maxPlacesOnMap);
+  if(state.googleReady){
+    state.places.forEach(p=>{const id=p.id||placeText(p);if(!append||!beforeIds.has(id))addGooglePlaceMarker(p)});
+  }
+  $("hudPlaces").textContent=String(state.places.length);
+  $("placesSummary").innerHTML='<div class="success">พบ/เก็บไว้ในผลลัพธ์ '+fmtNum(state.places.length)+' แห่ง · คลิกการ์ดเพื่อดูข้อมูลและไปยังปลายทาง</div>';
+  $("placesOutput").innerHTML=state.places.map((p,i)=>placeCardHTML(p,i)).join("")||'<div class="empty">ไม่พบสถานที่</div>';
+  document.querySelectorAll("[data-place-index]").forEach(el=>el.addEventListener("click",()=>{
+    const p=state.places[Number(el.dataset.placeIndex)];if(p){const loc=placeLocation(p);if(loc){setDestinationFromPlace(p);centerOn(loc,17);showPlaceInfo(p);switchTab("mapPanel")}}
+  }));
+}
+function placeCardHTML(p,i){
+  const rating=p.rating?`<span class="star">★ ${esc(p.rating)}</span><span>(${fmtNum(p.userRatingCount||0)})</span>`:"<span>ยังไม่มีคะแนน</span>";
+  const price=p.priceLevel?`<span class="price">${priceGlyph(p.priceLevel)}</span>`:"<span>ราคา -</span>";
+  return '<div class="place-card" data-place-index="'+i+'"><h3>'+esc(placeText(p))+'</h3><div class="place-meta">'+rating+price+'<span>'+esc(p.primaryTypeDisplayName||p.primaryType||"")+'</span></div><p>'+esc(p.formattedAddress||"")+'</p><p>'+esc(placeOpenText(p))+(p.nationalPhoneNumber?" · "+esc(p.nationalPhoneNumber):"")+'</p><div class="item-actions"><button class="btn sm primary">ตั้งเป็นปลายทาง</button>'+(p.googleMapsURI?'<a class="btn sm outline" href="'+esc(p.googleMapsURI)+'" target="_blank" rel="noopener">Google Maps</a>':"")+'</div></div>';
+}
+function setDestinationFromPlace(place){const loc=placeLocation(place);if(!loc)return;state.routeDestination={place,lat:loc.lat,lng:loc.lng,name:placeText(place),address:place.formattedAddress||""};setDestinationUI(state.routeDestination);toast("ตั้งปลายทาง: "+placeText(place))}
+function setDestinationUI(dest){$("destInput").value=dest?.name||"";}
 
-            }, 2500);
-        }
+/* =============================================================
+   09. NATIVE SEARCH FALLBACK / QUICKS
+   ============================================================= */
+let fallbackSearchTimer=null;
+async function nominatimSearch(q){
+  const base=cfg("bkk_nominatim",APP.nominatimDefault);const u=new URL(base.replace(/\/$/,"")+"/search");u.search=new URLSearchParams({q,format:"jsonv2",limit:"8",addressdetails:"1",countrycodes:"th"}).toString();
+  const r=await fetch(u,{headers:{Accept:"application/json"}});if(!r.ok)throw new Error("Nominatim "+r.status);return r.json();
+}
+function showFallbackSuggestions(items){const box=$("fallbackSuggestions");if(!items?.length){box.hidden=true;box.innerHTML="";return}box.innerHTML=items.map((x,i)=>'<div class="suggest" data-suggestion="'+i+'"><b>'+esc(x.display_name?.split(",")[0]||x.name||"สถานที่")+'</b><span>'+esc(x.display_name||"")+'</span></div>').join("");box.hidden=false;box.querySelectorAll("[data-suggestion]").forEach(el=>el.addEventListener("click",()=>{
+  const x=items[Number(el.dataset.suggestion)];if(!validCoord(x.lat,x.lon))return;state.routeDestination={lat:num(x.lat),lng:num(x.lon),name:x.name||String(x.display_name).split(",")[0],address:x.display_name};setDestinationUI(state.routeDestination);centerOn({lat:num(x.lat),lng:num(x.lon)},16);box.hidden=true;switchTab("plannerPanel");
+}));}
+async function runSearch(q){q=String(q||"").trim();if(q.length<2)return;setBusy($("globalSearchBtn"),true,"ค้นหา");try{
+  if(state.googleReady){const places=await googleTextSearch(q,currentMapCenter(),12);renderPlaces(places,false);if(places[0]){const p=places[0];setDestinationFromPlace(p);showPlaceInfo(p);centerOn(placeLocation(p),16)}switchTab("placesPanel");}
+  else{const items=await nominatimSearch(q);showFallbackSuggestions(items)}
+}catch(e){console.error(e);toast("ค้นหาไม่สำเร็จ")}finally{setBusy($("globalSearchBtn"),false)}
+}
+$("fallbackSearch").addEventListener("input",e=>{clearTimeout(fallbackSearchTimer);const q=e.target.value.trim();if(q.length<3){$("fallbackSuggestions").hidden=true;return}fallbackSearchTimer=setTimeout(()=>runSearch(q),430)});
+$("fallbackSearch").addEventListener("keydown",e=>{if(e.key==="Enter")runSearch(e.target.value)});
+$("globalSearchBtn").addEventListener("click",()=>runSearch($("fallbackSearch").value));
 
-        // Show Vehicle Info Card on map click
-        function showVehicleCard(v) {
-            document.getElementById('vc-title').innerText = v.name;
-            document.getElementById('vc-route').innerText = v.routeStr;
-            document.getElementById('vc-next-stop').innerText = v.nextStop;
-            document.getElementById('vc-eta').innerText = v.eta;
-            document.getElementById('vc-speed').innerText = `${v.speed} กม./ชม.`;
-            document.getElementById('vc-icon-bg').style.backgroundColor = v.color;
-            document.getElementById('vc-icon').className = `fa-solid ${v.icon}`;
-            
-            document.getElementById('vehicle-card').classList.remove('hidden');
-        }
+/* =============================================================
+   10. GPS / PIN
+   ============================================================= */
+function initGPS(){
+  if(!navigator.geolocation){$("hudGps").textContent="N/A";setProvider("err","เบราว์เซอร์ไม่มี GPS");return}
+  state.geoWatch=navigator.geolocation.watchPosition(pos=>{
+    const c=pos.coords;if(!validCoord(c.latitude,c.longitude))return;
+    state.userPos={lat:c.latitude,lng:c.longitude,accuracy:num(c.accuracy),heading:c.heading,speed:c.speed};
+    $("hudGps").textContent="±"+Math.round(state.userPos.accuracy)+"m";
+    renderUserOnGoogle();
+    if(state.tracking)addTrackPoint(state.userPos);
+  },err=>{
+    $("hudGps").textContent=err.code===1?"DENIED":"OFF";console.warn("GPS",err.message);
+  },{enableHighAccuracy:true,maximumAge:8000,timeout:15000});
+}
+function renderUserOnGoogle(){if(!state.googleReady||!state.userPos)return;const {AdvancedMarkerElement}=state.googleClasses;const pos={lat:state.userPos.lat,lng:state.userPos.lng};if(!state.userMarker){state.userMarker=new AdvancedMarkerElement({map:state.gMap,position:pos,title:"ตำแหน่งของคุณ",content:makeAdvancedContent("⌾","place")})}else state.userMarker.position=pos;centerOn(pos,state.gMap.getZoom()<14?15:null)}
+function focusGPS(){if(state.userPos){centerOn(state.userPos,16)}else toast("รอพิกัด GPS — ตรวจสอบสิทธิ์ Location")}
+function togglePin(){state.pinEnabled=!state.pinEnabled;$("pinBtn").classList.toggle("active",state.pinEnabled);toast(state.pinEnabled?"โหมดปักหมุด: คลิกบนแผนที่":"ปิดโหมดปักหมุด")}
+function movePin(pos,fromMap=false){if(!validCoord(pos.lat,pos.lng))return;
+  state.destination={lat:pos.lat,lng:pos.lng,name:"หมุดบนแผนที่"};state.routeDestination={lat:pos.lat,lng:pos.lng,name:"หมุดบนแผนที่"};setDestinationUI(state.routeDestination);
+  const c=$("pinCard");c.classList.add("show");$("pinTitle").textContent="หมุดปลายทาง";$("pinCoords").textContent=pos.lat.toFixed(6)+", "+pos.lng.toFixed(6);
+  if(state.googleReady){const {AdvancedMarkerElement}=state.googleClasses;if(!state.pin){state.pin=new AdvancedMarkerElement({map:state.gMap,position:pos,title:"ปลายทาง",content:makeAdvancedContent("⌖","place")})}else state.pin.position=pos;}
+  if(fromMap)reverseGeocode(pos);
+}
+async function reverseGeocode(pos){
+  try{const base=cfg("bkk_nominatim",APP.nominatimDefault);const u=new URL(base.replace(/\/$/,"")+"/reverse");u.search=new URLSearchParams({lat:pos.lat,lon:pos.lng,format:"jsonv2",zoom:"18"}).toString();const r=await fetch(u);if(!r.ok)throw new Error("reverse "+r.status);const d=await r.json();const name=d.name||d.display_name?.split(",")[0]||"หมุดบนแผนที่";state.routeDestination.name=name;state.routeDestination.address=d.display_name||"";setDestinationUI(state.routeDestination);$("pinTitle").textContent=name;$("pinCoords").textContent=(d.display_name||"")+" · "+pos.lat.toFixed(6)+", "+pos.lng.toFixed(6)}catch{}}
+$("gpsBtn").addEventListener("click",focusGPS);
+$("pinBtn").addEventListener("click",togglePin);
+$("usePinBtn").addEventListener("click",()=>{if(state.routeDestination){setDestinationUI(state.routeDestination);switchTab("plannerPanel")}else toast("ยังไม่มีหมุด")});
+$("pinSearchBtn").addEventListener("click",()=>{const c=state.routeDestination;if(!c)return;state.lastPlacesCenter={lat:c.lat,lng:c.lng};switchTab("placesPanel");runNearbyPlaces("all")});
 
-        function closeVehicleCard() {
-            document.getElementById('vehicle-card').classList.add('hidden');
-        }
+/* =============================================================
+   11. PLACES SEARCH UI
+   ============================================================= */
+function populatePlaceTypes(){const s=$("placeTypeSelect");s.innerHTML=APP.placeTypes.map(([v,t])=>'<option value="'+esc(v)+'">'+esc(t)+" · "+esc(v)+"</option>").join("")}
+async function runNearbyPlaces(typeOverride=null){
+  if(!state.googleReady){toast("ต้องโหลด Google Maps และ Places API ก่อน");switchTab("lifePanel");return}
+  const type=typeOverride||$("placeTypeSelect").value;const radius=num($("placeRadius").value)||2000;setBusy($("placesSearchBtn"),true,"กำลังค้นหา");$("placesStatus").className="badge google";$("placesStatus").textContent="กำลังค้นหา";
+  try{const center=state.lastPlacesCenter||currentMapCenter();const places=await googleNearbySearch(type,radius,center,20);state.lastPlacesCenter=center;renderPlaces(places,false);$("placesStatus").className="badge live";$("placesStatus").textContent="สำเร็จ";centerOn(center,state.gMap.getZoom());}
+  catch(e){console.error(e);$("placesStatus").className="badge off";$("placesStatus").textContent="ERROR";toast("Places API ไม่สำเร็จ — ตรวจ API/Places enabled/quota")}
+  finally{setBusy($("placesSearchBtn"),false)}
+}
+async function searchPlacesText(){
+  const q=prompt("ค้นหา Google Places ด้วยข้อความ เช่น ร้านอาหารสุขุมวิท / โรงพยาบาลใกล้ฉัน");if(!q)return;
+  try{const places=await googleTextSearch(q,currentMapCenter(),20);renderPlaces(places,false);switchTab("placesPanel")}catch(e){toast("Text Search ไม่สำเร็จ")}
+}
+async function runAllPlaceTypes(){
+  if(!state.googleReady){toast("ใส่ Google Maps API key ก่อน");return}
+  if(!confirm("การค้นหาหลายประเภทจะส่งหลาย request ไป Google Places และอาจมีค่าใช้จ่าย คุณต้องการทำต่อหรือไม่?"))return;
+  const btn=$("placesAllBtn");setBusy(btn,true,"กำลังค้นหาหลายประเภท");clearPlaceMarkers();state.places=[];const center=currentMapCenter();const out=[];const seen=new Set();const types=APP.placeTypes;
+  for(let i=0;i<types.length;i++){
+    const [type,label]=types[i];$("placesStatus").textContent=(i+1)+"/"+types.length+" "+label;
+    try{const arr=await googleNearbySearch(type,num($("placeRadius").value)||2000,center,20);arr.forEach(p=>{const id=p.id||placeText(p);if(!seen.has(id)){seen.add(id);out.push(p)}});renderPlaces(out,true)}catch(e){console.warn("all places",type,e)}
+    await sleep(120);
+  }
+  $("placesStatus").className="badge live";$("placesStatus").textContent="ครบตาม request";setBusy(btn,false);toast("ค้นหาหลายประเภทเสร็จแล้ว: "+out.length+" แห่ง");
+}
+document.querySelectorAll("[data-quick]").forEach(b=>b.addEventListener("click",async()=>{switchTab("placesPanel");$("placeTypeSelect").value=b.dataset.quick;await runNearbyPlaces(b.dataset.quick)}));
+$("placesSearchBtn").addEventListener("click",()=>runNearbyPlaces());
+$("placesTextBtn").addEventListener("click",searchPlacesText);
+$("placesAllBtn").addEventListener("click",runAllPlaceTypes);
+$("togglePlacesBtn").addEventListener("click",()=>{switchTab("placesPanel");runNearbyPlaces()});
 
-        function renderLiveVehicleList() {
-            const container = document.getElementById('live-vehicles-container');
-            container.innerHTML = '';
+/* =============================================================
+   12. ROUTE PLANNER — GOOGLE ROUTES / TRANSIT
+   ============================================================= */
+function initPlannerDefaults(){
+  const now=new Date();$("departureInput").value=toLocalDateTimeValue(now);$("arrivalInput").value="";
+}
+function selectedMode(){return document.querySelector("#modeSegments button.active")?.dataset.mode||"DRIVING"}
+function toggleTransitOptions(){
+  const yes=selectedMode()==="TRANSIT";$("transitOptions").style.display=yes?"block":"none";
+}
+function getRouteOrigin(){
+  if(state.routeOrigin)return state.routeOrigin;
+  if(state.userPos)return {lat:state.userPos.lat,lng:state.userPos.lng,name:"ตำแหน่งของฉัน"};
+  const v=$("originInput").value.trim();return v?{query:v,name:v}:null;
+}
+function getRouteDestination(){
+  if(state.routeDestination)return state.routeDestination;
+  const v=$("destInput").value.trim();return v?{query:v,name:v}:null;
+}
+function clearRouteGraphics(){
+  state.routePolylines.forEach(p=>{try{p.setMap(null)}catch{}});state.routePolylines=[];
+  state.routeMarkers.forEach(m=>{try{m.map=null}catch{}});state.routeMarkers=[];
+  state.transitSegments=[];state.activeTransitStep=null;
+}
+function locationForRoutes(obj){
+  if(!obj)return null;
+  if(obj.place)return obj.place;
+  if(validCoord(obj.lat,obj.lng))return {lat:num(obj.lat),lng:num(obj.lng)};
+  return obj.query||obj.name||null;
+}
+function transitAllowedModes(){
+  const v=$("transitModes").value;
+  if(v==="BUS")return ["BUS"];
+  if(v==="RAIL")return ["SUBWAY","TRAIN","LIGHT_RAIL","RAIL"];
+  if(v==="BUS_RAIL")return ["BUS","SUBWAY","TRAIN","LIGHT_RAIL","RAIL"];
+  return ["BUS","SUBWAY","TRAIN","LIGHT_RAIL","RAIL"];
+}
+function parseLocalDateTime(inputId){const v=$(inputId).value;if(!v)return null;const d=new Date(v);return Number.isNaN(d.getTime())?null:d}
+async function computeGoogleRoute(){
+  if(!state.googleReady){toast("ต้องโหลด Google Maps Platform ก่อน");switchTab("lifePanel");return}
+  const origin=getRouteOrigin(),destination=getRouteDestination();
+  if(!origin||!destination){toast("กรอกทั้งต้นทางและปลายทางก่อน");return}
+  const mode=selectedMode();const serial=++state.requestSerial;const btn=$("planBtn");setBusy(btn,true,"กำลังคำนวณ");clearRouteGraphics();$("routeStatus").className="badge google";$("routeStatus").textContent="กำลังคำนวณ";
+  const {Route}=await google.maps.importLibrary("routes");
+  const fields=["path","legs","viewport","distanceMeters","durationMillis","staticDurationMillis","localizedValues","tollInfo"];
+  if(mode==="TRANSIT")fields.push("transitFare");
+  const req={origin:locationForRoutes(origin),destination:locationForRoutes(destination),travelMode:mode,computeAlternativeRoutes:true,fields,language:"th",units:"METRIC"};
+  if(mode==="DRIVING")req.routingPreference="TRAFFIC_AWARE_OPTIMAL";
+  if(mode==="TRANSIT"){
+    const arrival=parseLocalDateTime("arrivalInput");const departure=arrival?null:parseLocalDateTime("departureInput");
+    if(arrival)req.arrivalTime=arrival;else req.departureTime=departure||new Date();
+    req.transitPreference={allowedTransitModes:transitAllowedModes(),routingPreference:$("transitPreference").value};
+  }else req.departureTime=new Date();
+  try{
+    const result=await Route.computeRoutes(req);if(serial!==state.requestSerial)return;
+    const routes=result.routes||[];
+    state.routeResults=routes;
+    if(!routes.length)throw new Error("No route returned");
+    $("routeStatus").className="badge live";$("routeStatus").textContent="พบ "+routes.length+" ทางเลือก";
+    selectRoute(0);
+    renderRouteOptions(routes,mode);
+  }catch(e){
+    console.error(e);$("routeStatus").className="badge off";$("routeStatus").textContent="ERROR";
+    $("routeOptions").innerHTML='<div class="card"><div class="warning"><b>คำนวณเส้นทางไม่สำเร็จ</b><br>'+esc(e.message||"Google Routes error")+'<br><span class="source">ตรวจว่าเปิด Routes API, Maps JavaScript API, Billing และ key restriction ถูกต้อง รวมถึงพื้นที่นั้นรองรับ Transit หรือไม่</span></div></div>';
+    toast("Google Routes คำนวณไม่สำเร็จ");
+  }finally{setBusy(btn,false)}
+}
+function routeFareText(route){
+  const f=route?.transitFare;if(!f)return"ค่าโดยสารไม่ระบุ";
+  const units=f.currencyCode||f.currency?.code||"THB";const value=f.units!=null?Number(f.units)+(Number(f.nanos||0)/1e9):Number(f.value)||0;
+  return value?value.toLocaleString("th-TH",{maximumFractionDigits:2})+" "+units:"ค่าโดยสารไม่ระบุ";
+}
+function routeTollText(route){
+  const prices=route?.tollInfo?.estimatedPrice||route?.tollInfo?.estimatedPrices;if(!prices||!prices.length)return"ไม่มี/ไม่ทราบ";
+  return prices.map(p=>{const v=p.units!=null?Number(p.units)+(Number(p.nanos||0)/1e9):Number(p.value)||0;return v.toLocaleString("th-TH",{maximumFractionDigits:2})+" "+(p.currencyCode||"THB")}).join(" + ");
+}
+function localizedDistance(route){return route?.localizedValues?.distance?.text||formatDistance(route?.distanceMeters)}
+function localizedDuration(route){return route?.localizedValues?.duration?.text||formatDurationMs(route?.durationMillis)}
+function renderRouteMetrics(route,mode){
+  $("routeMetrics").style.display="grid";
+  const fare=mode==="TRANSIT"?routeFareText(route):mode==="DRIVING"?"ค่าน้ำมันคำนวณด้านล่าง":"-";
+  $("routeMetrics").innerHTML=[
+    [localizedDistance(route),"ระยะทาง"],[localizedDuration(route),"เวลา"],[fare,"ค่าเดินทาง"],[route?.tollInfo?routeTollText(route):mode==="TRANSIT"?countTransfers(route)+" ต่อ/เปลี่ยน":"-","ข้อมูลเพิ่ม"]
+  ].map(x=>'<div class="metric"><b>'+esc(x[0])+'</b><span>'+esc(x[1])+'</span></div>').join("");
+}
+function countTransfers(route){
+  const lines=[];for(const step of getSteps(route)){const td=step.transitDetails;if(td?.transitLine){const id=td.transitLine.shortName||td.transitLine.name||JSON.stringify(td.transitLine);if(!lines.includes(id))lines.push(id)}}return Math.max(0,lines.length-1);
+}
+function getSteps(route){return (route?.legs||[]).flatMap(leg=>leg.steps||[])}
+function selectRoute(index){
+  if(!state.routeResults[index])return;state.selectedRouteIndex=index;const route=state.routeResults[index];clearRouteGraphics();
+  try{
+    const polylines=route.createPolylines({});polylines.forEach(p=>{p.setMap(state.gMap);state.routePolylines.push(p)});
+  }catch(e){console.warn("createPolylines",e);if(route.path){const {Polyline}=google.maps;const p=new Polyline({map:state.gMap,path:route.path,strokeColor:"#38bdf8",strokeOpacity:.9,strokeWeight:7});state.routePolylines.push(p)}}
+  renderRouteMetrics(route,selectedMode());renderRouteSteps(route,selectedMode());renderRouteOptions(state.routeResults,selectedMode());
+  $("routeSteps").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function renderRouteOptions(routes,mode){
+  $("routeOptions").innerHTML='<div class="card"><div class="title">เส้นทางทางเลือก <span class="mini">Google Routes</span></div>'+routes.map((r,i)=>{
+    const labels=i===0?"แนะนำโดย API":"ทางเลือก "+(i+1);const trans=mode==="TRANSIT"?routeFareText(r):"";
+    return `<div class="route-card ${i===state.selectedRouteIndex?"selected":""}" data-route-index="${i}"><div class="item-head"><b>${esc(labels)}</b><span class="badge ${i===0?"google":"off"}">${esc(mode)}</span></div><div class="route-line"></div><div class="route-summary"><div><b>${esc(localizedDuration(r))}</b><span>เวลา</span></div><div><b>${esc(localizedDistance(r))}</b><span>ระยะทาง</span></div><div><b>${esc(mode==="TRANSIT"?trans:(mode==="DRIVING"?routeTollText(r):"-"))}</b><span>${esc(mode==="TRANSIT"?"ค่าโดยสาร":"ทางด่วน")}</span></div></div><div class="item-actions"><button class="btn sm primary">ใช้เส้นทางนี้</button><button class="btn sm outline">รายละเอียด</button></div></div>`;
+  }).join("")+'</div>';
+  document.querySelectorAll("[data-route-index]").forEach(el=>el.addEventListener("click",e=>{const i=Number(el.dataset.routeIndex);selectRoute(i)}));
+  document.querySelectorAll("[data-route-index] .btn.outline").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();const i=Number(e.currentTarget.closest("[data-route-index]").dataset.routeIndex);showRouteDetail(state.routeResults[i],i)}));
+}
 
-            vehicles.forEach(v => {
-                const item = document.createElement('div');
-                item.className = 'glass-panel p-3.5 rounded-2xl border border-slate-700/60 flex items-center justify-between cursor-pointer hover:border-slate-500 transition';
-                item.onclick = () => {
-                    switchTab('map');
-                    map.flyTo([v.lat, v.lng], 16);
-                    showVehicleCard(v);
-                };
+function showRouteDetail(route,index){
+  $("routeModalTitle").textContent="รายละเอียดเส้นทาง "+(index+1);
+  $("routeModalBody").innerHTML='<div class="metric-grid">'+[[localizedDistance(route),"ระยะทาง"],[localizedDuration(route),"เวลา"],[selectedMode()==="TRANSIT"?routeFareText(route):routeTollText(route),selectedMode()==="TRANSIT"?"ค่าโดยสาร":"ทางด่วน"],[countTransfers(route),"เปลี่ยนสาย"]].map(x=>'<div class="metric"><b>'+esc(x[0])+'</b><span>'+esc(x[1])+'</span></div>').join("")+'</div><div class="list" style="margin-top:10px">'+getSteps(route).map((s,i)=>stepHTML(s,i)).join("")+'</div>';
+  openModal("routeModal");
+}
+function stepHTML(step,i){
+  const td=step.transitDetails;const line=td?.transitLine;const mode=step.travelMode||"";const label=td?(line?.shortName||line?.name||"Transit"):"เดินทาง";const vehicle=td?.transitLine?.vehicle?.name||td?.transitLine?.vehicle?.type||mode;const times=td?formatTime(td.departureTime)+" → "+formatTime(td.arrivalTime):formatDurationMs(step.durationMillis||step.staticDurationMillis);
+  return '<div class="step"><div class="step-icon">'+(td?"🚌":"➜")+'</div><div><b>'+esc(label)+'</b><small>'+esc(vehicle)+" · "+esc(times)+(td?.headsign?" · ปลายทางรถ: "+esc(td.headsign):"")+(td?.stopCount!=null?" · "+esc(td.stopCount)+" ป้าย":"")+'</small></div></div>';
+}
+function renderRouteSteps(route,mode){
+  const steps=getSteps(route);state.transitSegments=[];
+  steps.forEach((s,i)=>{if(s.transitDetails)state.transitSegments.push({step:s,index:i})});
+  $("routeSteps").innerHTML='<div class="card"><div class="title">รายละเอียดการเดินทาง <span class="mini">กดช่วงรถเมล์/รถไฟเพื่อวาดเส้นช่วงนั้น</span></div><div class="steps">'+steps.map((s,i)=>routeStepCard(s,i)).join("")+'</div></div>';
+  document.querySelectorAll("[data-transit-step]").forEach(el=>el.addEventListener("click",()=>drawTransitStep(Number(el.dataset.transitStep))));
+  if(mode==="DRIVING")renderDrivingCost(route);else $("fuelCard").style.display="none";
+}
+function routeStepCard(step,index){
+  const td=step.transitDetails;const line=td?.transitLine;const color=line?.color||"#2563eb";const title=td?(line?.shortName||line?.name||"Transit"):(step.instructions||"ช่วงเดินทาง");
+  let sub=step.localizedValues?.duration||formatDurationMs(step.durationMillis||step.staticDurationMillis);
+  if(td){sub=(formatTime(td.departureTime)||"-")+" → "+(formatTime(td.arrivalTime)||"-")+" · "+(td.departureStop?.name||"จุดขึ้น")+" → "+(td.arrivalStop?.name||"จุดลง")+" · "+(td.stopCount||0)+" ป้าย";}
+  return '<div class="step" '+(td?'data-transit-step="'+state.transitSegments.length+'" style="cursor:pointer"':'')+'><div class="step-icon" style="background:'+esc(color)+'2b;color:'+esc(color)+'">'+(td?.transitLine?.vehicle?.type==="BUS"?"🚌":td?"🚆":"•")+'</div><div><b>'+esc(title)+'</b><small>'+esc(sub)+(td?.headsign?" · ปลายทาง: "+esc(td.headsign):"")+(td?.tripShortText?" · เที่ยว: "+esc(td.tripShortText):"")+'</small>'+(td?.transitLine?.agencies?.length?'<small>ผู้ให้บริการ: '+esc(td.transitLine.agencies.map(a=>a.name||"").filter(Boolean).join(", "))+'</small>':"")+'</div></div>';
+}
+function drawTransitStep(index){
+  const seg=state.transitSegments[index];if(!seg?.step?.path||!state.googleReady)return;
+  if(state.activeTransitStep?.setMap)state.activeTransitStep.setMap(null);
+  const color=seg.step.transitDetails?.transitLine?.color||"#38bdf8";
+  state.activeTransitStep=new google.maps.Polyline({map:state.gMap,path:seg.step.path,strokeColor:color,strokeOpacity:.95,strokeWeight:9,zIndex:120});
+  const start=seg.step.startLocation?.latLng||seg.step.startLocation?.location||seg.step.startLocation;const end=seg.step.endLocation?.latLng||seg.step.endLocation?.location||seg.step.endLocation;
+  if(start)centerOn({lat:start.lat?start.lat():start.latitude||start.lat,lng:start.lng?start.lng():start.longitude||start.lng},16);
+  toast("แสดงเส้นของ "+(seg.step.transitDetails?.transitLine?.shortName||"สาย Transit"));
+}
+function setPlannerOriginFromMyPosition(){
+  if(!state.userPos){toast("ยังไม่มี GPS");return}state.routeOrigin={lat:state.userPos.lat,lng:state.userPos.lng,name:"ตำแหน่งของฉัน"};$("originInput").value="ตำแหน่งของฉัน";toast("ตั้งต้นทางเป็นตำแหน่งฉัน")
+}
+function clearPlannerOrigin(){state.routeOrigin=null;$("originInput").value=""}
+$("myOriginBtn").addEventListener("click",setPlannerOriginFromMyPosition);
+$("clearOriginBtn").addEventListener("click",clearPlannerOrigin);
+$("planBtn").addEventListener("click",computeGoogleRoute);
+$("clearArrivalBtn").addEventListener("click",()=>$("arrivalInput").value="");
+$("modeSegments").addEventListener("click",e=>{const b=e.target.closest("button[data-mode]");if(!b)return;document.querySelectorAll("#modeSegments button").forEach(x=>x.classList.remove("active"));b.classList.add("active");toggleTransitOptions()});
+$("destInput").addEventListener("keydown",async e=>{if(e.key!=="Enter")return;const q=e.target.value.trim();if(!q)return;try{if(state.googleReady){const a=await googleTextSearch(q,currentMapCenter(),1);if(a[0])setDestinationFromPlace(a[0])}else{const a=await nominatimSearch(q);if(a[0]){state.routeDestination={lat:num(a[0].lat),lng:num(a[0].lon),name:a[0].display_name?.split(",")[0]||q,address:a[0].display_name};setDestinationUI(state.routeDestination)}}}catch{toast("ค้นหาปลายทางไม่สำเร็จ")}});
+$("plannerSearchBtn").addEventListener("click",async()=>{const q=$("destInput").value.trim();if(!q)return toast("พิมพ์ชื่อสถานที่ก่อน");try{const a=state.googleReady?await googleTextSearch(q,currentMapCenter(),8):await nominatimSearch(q);if(a[0]){if(state.googleReady)setDestinationFromPlace(a[0]);else{state.routeDestination={lat:num(a[0].lat),lng:num(a[0].lon),name:a[0].display_name?.split(",")[0]||q,address:a[0].display_name};setDestinationUI(state.routeDestination)}switchTab("plannerPanel")}}catch{toast("ค้นหาปลายทางไม่สำเร็จ")}});
+$("plannerPinBtn").addEventListener("click",()=>{switchTab("mapPanel");state.pinEnabled=true;$("pinBtn").classList.add("active");toast("คลิกบนแผนที่เพื่อปักปลายทาง")});
 
-                item.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow" style="background-color: ${v.color}">
-                            <i class="fa-solid ${v.icon}"></i>
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <h4 class="text-xs font-bold text-white">${v.name}</h4>
-                                <span class="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300 font-mono">${v.line}</span>
-                            </div>
-                            <p class="text-[10px] text-slate-400 mt-0.5">${v.routeStr}</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-xs font-bold text-amber-400">${v.eta}</div>
-                        <div class="text-[9px] text-slate-400">ถัดไป: ${v.nextStop}</div>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
-        }
+/* =============================================================
+   13. DRIVING COST ESTIMATOR
+   ============================================================= */
+function getCostCfg(){return{kmL:Math.max(1,num(cfg("bkk_fuel_kml",APP.defaultFuelKmL))),price:Math.max(0,num(cfg("bkk_fuel_price",APP.defaultFuelPrice))),toll:Math.max(0,num(cfg("bkk_default_toll",APP.defaultToll)))} }
+function renderDrivingCost(route){
+  const c=getCostCfg();const km=num(route?.distanceMeters)/1000;const liters=km/c.kmL;const fuel=liters*c.price;const toll=route?.tollInfo?.estimatedPrices?.[0]?routeTollBaht(route):c.toll;const total=fuel+toll;$("fuelCard").style.display="block";$("drivingCostMetrics").innerHTML=[[fuel.toFixed(2)+" ฿","ค่าน้ำมัน"],[toll.toFixed(2)+" ฿","ทางด่วน"],[total.toFixed(2)+" ฿","รวมโดยประมาณ"],[liters.toFixed(2)+" L","น้ำมัน"]].map(x=>'<div class="metric"><b>'+esc(x[0])+'</b><span>'+esc(x[1])+'</span></div>').join("");
+}
+function routeTollBaht(route){const p=route?.tollInfo?.estimatedPrices?.[0];if(!p)return 0;return (num(p.units)+num(p.nanos)/1e9)}
+$("saveCostBtn").addEventListener("click",()=>{setCfg("bkk_fuel_kml",$("fuelKmL").value);setCfg("bkk_fuel_price",$("fuelPrice").value);setCfg("bkk_default_toll",$("defaultToll").value);toast("บันทึกค่าใช้รถแล้ว")});
 
-        function toggleStravaTracking() {
-            isTrackingStrava = !isTrackingStrava;
-            const btn = document.getElementById('btn-toggle-strava');
-            const btnIcon = document.getElementById('strava-btn-icon');
-            const btnText = document.getElementById('strava-btn-text');
-            const hud = document.getElementById('strava-hud');
+/* =============================================================
+   14. RAIL / STATION HELPERS
+   ============================================================= */
+function initRail(){
+  $("railLine").innerHTML=Object.entries(RAIL).map(([k,v])=>'<option value="'+esc(k)+'">'+esc(v.name)+"</option>").join("");renderRailStations();renderAllStations();
+}
+function renderRailStations(){const line=RAIL[$("railLine").value];if(!line)return;$("railStation").innerHTML=line.stations.map((s,i)=>'<option value="'+i+'">'+esc(s)+"</option>").join("");renderRailInfo()}
+function selectedRail(){const key=$("railLine").value;const line=RAIL[key];const i=num($("railStation").value);return{key,line,index:i,name:line?.stations[i]||""}}
+async function findStationPlace(station){
+  const q=station+" Bangkok Thailand";const places=await googleTextSearch(q,currentMapCenter(),5);return places.find(p=>p.location)||places[0]||null;
+}
+async function stationAsDestination(){const s=selectedRail();if(!s.name)return;if(!state.googleReady){toast("ต้องใช้ Google Places/Maps เพื่อค้นหาสถานี");return}try{const p=await findStationPlace(s.name);if(!p){toast("ค้นหาสถานีไม่พบ");return}setDestinationFromPlace(p);switchTab("plannerPanel");}catch{toast("ค้นหาสถานีไม่สำเร็จ")}}
+async function stationAsOrigin(){const s=selectedRail();if(!s.name)return;if(!state.googleReady){toast("ต้องใช้ Google Places/Maps");return}try{const p=await findStationPlace(s.name);if(!p){toast("ค้นหาสถานีไม่พบ");return}const loc=placeLocation(p);state.routeOrigin={place:p,lat:loc.lat,lng:loc.lng,name:p.displayName||s.name};$("originInput").value=p.displayName||s.name;switchTab("plannerPanel");}catch{toast("ค้นหาสถานีไม่สำเร็จ")}}
+async function routeFromMeToStation(){const s=selectedRail();if(!state.userPos){toast("ยังไม่มี GPS");return}if(!state.googleReady){toast("ต้องโหลด Google Maps");return}try{const p=await findStationPlace(s.name);if(!p)return;state.routeOrigin={lat:state.userPos.lat,lng:state.userPos.lng,name:"ตำแหน่งของฉัน"};setDestinationFromPlace(p);document.querySelector("#modeSegments button[data-mode='TRANSIT']").click();switchTab("plannerPanel");await computeGoogleRoute()}catch{toast("คำนวณไปสถานีไม่สำเร็จ")}}
+function renderRailInfo(){const s=selectedRail();$("railInfo").innerHTML='<div class="card"><div class="title">'+esc(s.line?.name||"")+' · '+esc(s.name)+' <span class="badge '+esc(s.line?.badge||"rail")+'">STATIC</span></div><div class="success">ใช้สถานีนี้ไปค้นหาใน Google Places และวางเป็นต้นทาง/ปลายทางได้ทันที ถ้าต้องการ “เวลาขบวน” ให้กดคำนวณด้วยโหมด Transit ตามเวลาออกเดินทาง</div></div>'}
+function renderAllStations(){
+  $("allStations").innerHTML=Object.entries(RAIL).map(([k,v])=>'<div class="station-line"><b>'+esc(v.name)+'</b><small>'+esc(v.stations.join(" · "))+'</small><button class="btn sm outline" data-rail-line="'+esc(k)+'">ใช้สายนี้</button></div>').join("");
+  $("allStations").querySelectorAll("[data-rail-line]").forEach(b=>b.addEventListener("click",()=>{$("railLine").value=b.dataset.railLine;renderRailStations();switchTab("transitPanel")}));
+}
+$("railLine").addEventListener("change",renderRailStations);$("railStation").addEventListener("change",renderRailInfo);
+$("stationAsDestinationBtn").addEventListener("click",stationAsDestination);$("stationAsOriginBtn").addEventListener("click",stationAsOrigin);$("routeToStationBtn").addEventListener("click",routeFromMeToStation);$("rerunTransitBtn").addEventListener("click",()=>{document.querySelector("#modeSegments button[data-mode='TRANSIT']").click();switchTab("plannerPanel");computeGoogleRoute()});
 
-            if (isTrackingStrava) {
-                // Start Tracking
-                btn.className = 'w-full py-3.5 rounded-2xl font-bold text-sm bg-red-600 hover:bg-red-700 text-white shadow-lg active:scale-95 transition flex items-center justify-center gap-2 animate-pulse';
-                btnIcon.className = 'fa-solid fa-stop';
-                btnText.innerText = 'หยุดบันทึกกิจกรรม (Stop & Save)';
-                hud.classList.remove('hidden');
+/* =============================================================
+   15. BUS NETWORK — OPENSTREETMAP / OVERPASS
+   ============================================================= */
+function overpassEndpoint(){return cfg("bkk_overpass",APP.overpassDefault)}
+function busBoundsQuery(){const b=state.gMap?.getBounds();if(b){const ne=b.getNorthEast(),sw=b.getSouthWest();return{south:sw.lat(),west:sw.lng(),north:ne.lat(),east:ne.lng()}}return APP.bkkBounds}
+async function fetchOverpass(query){
+  const endpoint=overpassEndpoint();const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8","Accept":"application/json"},body:query});if(!r.ok)throw new Error("Overpass HTTP "+r.status);return r.json();
+}
+function bboxText(b){return `${b.south},${b.west},${b.north},${b.east}`}
+async function loadBusRoutes(){
+  const btn=$("loadBusRoutesBtn");setBusy(btn,true,"กำลังโหลดสาย");$("busStatus").className="badge google";$("busStatus").textContent="กำลังโหลด";
+  try{
+    const b=APP.bkkBounds;const q=`[out:json][timeout:45];(rel["type"="route_master"]["route_master"="bus"](${bboxText(b)});rel["type"="route"]["route"="bus"](${bboxText(b)}););out tags;`;
+    const d=await fetchOverpass(q);const raw=(d.elements||[]).filter(x=>x.type==="relation");const byKey=new Map();
+    raw.forEach(x=>{const t=x.tags||{};const ref=(t.ref||t["route_ref"]||"").trim();const name=(t.name||"").trim();if(!ref&&!name)return;const k=(ref||name).toLowerCase()+"|"+((t.operator||t.network||"").toLowerCase());if(!byKey.has(k))byKey.set(k,{id:x.id,ref:ref||"—",name:name||ref,operator:t.operator||t.network||"ไม่ระบุ",network:t.network||"",colour:t.colour||t.color||"#0f766e",type:t.route_master?"route_master":"route"})});
+    state.busRoutes=[...byKey.values()].sort((a,b)=>String(a.ref).localeCompare(String(b.ref),"th"));
+    $("busStatus").className="badge live";$("busStatus").textContent=fmtNum(state.busRoutes.length)+" สาย";$("hudBus").textContent=String(state.busRoutes.length);renderBusRoutes();toast("โหลดสายรถเมล์จาก OSM แล้ว "+state.busRoutes.length+" รายการ");
+  }catch(e){console.error(e);$("busStatus").className="badge off";$("busStatus").textContent="ERROR";toast("โหลดสายรถเมล์ไม่สำเร็จ — Overpass อาจชั่วคราวหรือคำขอใหญ่เกินไป")}
+  finally{setBusy(btn,false)}
+}
+function renderBusRoutes(){
+  const filter=$("busFilter").value.trim().toLowerCase();const arr=state.busRoutes.filter(r=>!filter||[r.ref,r.name,r.operator,r.network].join(" ").toLowerCase().includes(filter));
+  $("busRouteList").innerHTML=arr.length?arr.map(r=>`<div class="bus-route" data-bus-index="${state.busRoutes.indexOf(r)}"><div style="display:flex;align-items:center;gap:7px"><span class="badge bus">BUS</span><b>${esc(r.ref)} · ${esc(r.name)}</b></div><small>ผู้ให้บริการ: ${esc(r.operator)}</small><span class="route-tag">วาดเส้นทาง</span></div>`).join(""):'<div class="empty">ไม่พบสายที่ตรงกับตัวกรอง หรือยังไม่ได้โหลด</div>';
+  $("busRouteList").querySelectorAll("[data-bus-index]").forEach(el=>el.addEventListener("click",()=>selectBusRoute(Number(el.dataset.busIndex))));
+}
 
-                stravaSeconds = 0;
-                stravaDistanceMeters = 0;
-                stravaPathPoints = [map.getCenter()];
-                stravaPolyline.setLatLngs(stravaPathPoints);
+async function selectBusRoute(index){
+  const r=state.busRoutes[index];if(!r)return;state.selectedBusRoute=r;clearBusGeometry();$("busRouteDetail").innerHTML='<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลด geometry ของ '+esc(r.ref)+'…</div>';
+  try{
+    const q=`[out:json][timeout:60];rel(${r.id});>;>;out tags geom;`;const d=await fetchOverpass(q);const ways=(d.elements||[]).filter(x=>x.type==="way"&&Array.isArray(x.geometry)&&x.geometry.length>1);
+    if(!ways.length)throw new Error("ไม่พบ geometry ของ relation");
+    drawBusWays(ways,r);
+    const stops=(d.elements||[]).filter(x=>x.type==="node"&&x.tags&&(x.tags.highway==="bus_stop"||x.tags.public_transport==="platform"));
+    $("busRouteDetail").innerHTML=`<div class="success"><b>สาย ${esc(r.ref)} · ${esc(r.name)}</b><br>ผู้ให้บริการ: ${esc(r.operator)}<br>พบ geometry ${fmtNum(ways.length)} ช่วง และป้าย/จุด transit ที่อยู่ใน relation ${fmtNum(stops.length)} จุด</div><div class="item-actions"><button class="btn sm primary" id="routeDetailToPlanner">ค้นหาเส้นทางด้วยสายนี้</button><button class="btn sm outline" id="routeDetailFit">ซูมดูเส้นทาง</button></div>`;
+    $("routeDetailToPlanner")?.addEventListener("click",()=>{switchTab("plannerPanel");$("destInput").value=r.name||r.ref;toast("ชื่อสายถูกใส่ไว้ให้ค้นหาต่อใน Google Routes")});
+    $("routeDetailFit")?.addEventListener("click",()=>fitBusRoutes());
+    switchTab("busPanel");toast("วาดเส้นสาย "+r.ref+" แล้ว");
+  }catch(e){console.error(e);$("busRouteDetail").innerHTML='<div class="warning">โหลด geometry ไม่สำเร็จ: '+esc(e.message||"")+'</div>'}
+}
+function drawBusWays(ways,meta){if(!state.googleReady)return;const color=meta.colour||"#0f766e";const paths=[];state.busLinesOnMap=[];for(const w of ways){const path=w.geometry.map(g=>({lat:g.lat,lng:g.lon}));paths.push(path);const line=new google.maps.Polyline({map:state.gMap,path,strokeColor:color,strokeOpacity:.78,strokeWeight:5,zIndex:30});state.busLinesOnMap.push(line)}state.busWayPaths=paths;state.busWayBounds=ways.flatMap(w=>w.geometry.map(g=>({lat:g.lat,lng:g.lon})));fitBusRoutes()}
+function fitBusRoutes(){if(!state.busWayBounds?.length||!state.googleReady)return;const {LatLngBounds}=google.maps;const b=new LatLngBounds();state.busWayBounds.forEach(p=>b.extend(p));state.gMap.fitBounds(b)}
+function clearBusGeometry(){
+  (state.busLinesOnMap||[]).forEach(x=>x.setMap?.(null));state.busLinesOnMap=[];state.busWayPaths=[];state.busWayBounds=[];
+  if(state.gMap&&state.selectedBusPolylines){state.selectedBusPolylines.forEach(x=>x.setMap(null));state.selectedBusPolylines=[]}
+}
+async function nearbyBusStops(){
+  if(!state.googleReady){toast("ต้องโหลด Google Maps ก่อน");return}
+  try{const {Place}=await google.maps.importLibrary("places");const c=state.userPos?{lat:state.userPos.lat,lng:state.userPos.lng}:currentMapCenter();const fields=["displayName","location","formattedAddress","googleMapsURI","id","transitStation"];const res=await Place.searchNearby({fields,locationRestriction:{center:c,radius:2500},includedPrimaryTypes:["bus_station","transit_station"],maxResultCount:20,rankPreference:"DISTANCE",language:"th",region:"TH"});renderPlaces(res.places||[],false);switchTab("placesPanel");toast("โหลดจุด Transit/ป้ายใกล้พื้นที่แล้ว")}catch(e){console.error(e);toast("ค้นหาป้ายรถเมล์ไม่สำเร็จ")}
+}
+$("loadBusRoutesBtn").addEventListener("click",loadBusRoutes);$("busFilter").addEventListener("input",renderBusRoutes);$("nearbyStopsBtn").addEventListener("click",nearbyBusStops);$("toggleBusBtn").addEventListener("click",()=>{switchTab("busPanel");loadBusRoutes()});$("clearBusMapBtn").addEventListener("click",()=>{clearBusGeometry();toast("ล้างเส้นรถเมล์แล้ว")});
 
-                stravaTimerInterval = setInterval(() => {
-                    stravaSeconds++;
-                    updateStravaHUD();
-                }, 1000);
+/* =============================================================
+   16. LIVE VEHICLE JSON ADAPTER
+   ============================================================= */
+function normalizeVehicle(v,i){
+  const lat=num(v.lat??v.latitude??v.position?.lat??v.location?.lat);const lng=num(v.lng??v.lon??v.longitude??v.position?.lng??v.location?.lng);if(!validCoord(lat,lng))return null;
+  return {id:String(v.id??v.vehicleId??v.vehicle_id??("vehicle-"+i)),line:String(v.line??v.route??v.routeShortName??v.route_short_name??""),destination:String(v.destination??v.headsign??v.trip?.destination??""),lat,lng,updatedAt:v.updatedAt??v.updated_at??v.timestamp??v.lastUpdate??null,speed:v.speed??null,bearing:v.bearing??v.heading??null,agency:String(v.agency??v.operator??""),type:String(v.type??v.vehicleType??v.vehicle_type??"BUS"),tripId:String(v.tripId??v.trip_id??"")};
+}
+function normalizeFeed(data){
+  const arr=Array.isArray(data)?data:(Array.isArray(data.vehicles)?data.vehicles:Array.isArray(data.data)?data.data:Array.isArray(data.results)?data.results:[]);return arr.map(normalizeVehicle).filter(Boolean);
+}
+function clearLiveMarkers(){(state.liveMarkers||[]).forEach(m=>{try{m.map=null}catch{}});state.liveMarkers=[];state.liveVehicles=[];$("hudLive").textContent="0"}
+async function loadLiveVehicles(manual=false){
+  const endpoint=cfg("bkk_live_endpoint")||$("liveEndpoint").value.trim();if(!endpoint){if(manual)toast("ใส่ Live JSON endpoint ก่อน");return}
+  try{const r=await fetch(endpoint,{headers:{Accept:"application/json"},cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);const data=await r.json();const vehicles=normalizeFeed(data);renderLiveVehicles(vehicles);state.lastLiveAt=new Date();$("liveStatus").className="badge live";$("liveStatus").textContent=vehicles.length+" รถ/ขบวน";toast("Live feed อัปเดต "+vehicles.length+" คัน",1800)}catch(e){console.error(e);$("liveStatus").className="badge off";$("liveStatus").textContent="ERROR";if(manual)toast("Live feed โหลดไม่สำเร็จ: "+(e.message||""))}
+}
+function renderLiveVehicles(vehicles){clearLiveMarkers();state.liveVehicles=vehicles;$("hudLive").textContent=String(vehicles.length);if(state.googleReady){const {AdvancedMarkerElement}=state.googleClasses;vehicles.forEach(v=>{const marker=new AdvancedMarkerElement({map:state.gMap,position:{lat:v.lat,lng:v.lng},title:(v.line?"สาย "+v.line+" · ":"")+v.destination,content:makeAdvancedContent(v.type==="BUS"?"🚌":"🚆","live"),gmpClickable:true});marker.addListener("click",()=>showLiveDetail(v));state.liveMarkers.push(marker)});}renderLiveList(vehicles)}
+function showLiveDetail(v){if(!state.gInfoWindow||!state.googleReady)return;const c=document.createElement("div");c.style.cssText="max-width:280px;font:13px/1.45 system-ui,sans-serif;color:#111";const title=document.createElement("strong");title.textContent=(v.line?"สาย "+v.line:"พาหนะ")+(v.destination?" → "+v.destination:"");c.appendChild(title);["ผู้ให้บริการ: "+(v.agency||"-"),"ความเร็ว: "+(v.speed!=null?fmtNum(v.speed,1)+"": "-"),"อัปเดต: "+formatDateTime(v.updatedAt||new Date())].forEach(t=>{const p=document.createElement("div");p.textContent=t;c.appendChild(p)});state.gInfoWindow.setContent(c);state.gInfoWindow.setPosition({lat:v.lat,lng:v.lng});state.gInfoWindow.open({map:state.gMap})}
+function renderLiveList(vehicles){
+  const arr=vehicles.slice().sort((a,b)=>String(a.line).localeCompare(String(b.line),"th"));$("liveVehicleList").innerHTML=arr.length?arr.map(v=>'<div class="item"><div class="item-head"><b>'+(v.type==="BUS"?"🚌":"🚆")+" "+esc(v.line||"ไม่ระบุสาย")+" · "+esc(v.destination||"ไม่ระบุปลายทาง")+'</b><span class="badge live">LIVE</span></div><small>'+esc(v.agency||"ไม่ระบุผู้ให้บริการ")+" · "+esc(v.id)+" · อัปเดต "+esc(formatDateTime(v.updatedAt||new Date()))+'</small></div>').join(""):'<div class="empty">ยังไม่มีข้อมูล Live</div>';
+}
+function startLivePolling(){clearInterval(state.liveTimer);const ms=Math.max(5000,num($("liveInterval").value)||20000);if(!cfg("bkk_live_endpoint")&&!$("liveEndpoint").value.trim())return;loadLiveVehicles(true);state.liveTimer=setInterval(()=>{if(document.hidden)return;loadLiveVehicles(false)},ms)}
+$("saveLiveBtn").addEventListener("click",()=>{setCfg("bkk_live_endpoint",$("liveEndpoint").value.trim());setCfg("bkk_live_interval",$("liveInterval").value);setCfg("bkk_live_type",$("liveFeedType").value);startLivePolling();toast("บันทึกและเริ่ม Live feed แล้ว")});
+$("refreshLiveBtn").addEventListener("click",()=>loadLiveVehicles(true));
+$("stopLiveBtn").addEventListener("click",()=>{clearInterval(state.liveTimer);state.liveTimer=null;clearLiveMarkers();$("liveStatus").className="badge off";$("liveStatus").textContent="OFF";toast("หยุด Live feed แล้ว")});
+$("toggleLiveBtn").addEventListener("click",()=>{switchTab("livePanel");if(cfg("bkk_live_endpoint"))startLivePolling()});
 
-            } else {
-                // Stop Tracking
-                btn.className = 'w-full py-3.5 rounded-2xl font-bold text-sm bg-brand-orange hover:bg-orange-600 text-white shadow-lg active:scale-95 transition flex items-center justify-center gap-2';
-                btnIcon.className = 'fa-solid fa-play';
-                btnText.innerText = 'เริ่มบันทึกกิจกรรม (Start Activity)';
-                hud.classList.add('hidden');
+/* =============================================================
+   17. SAVED PLACES / TRIP HISTORY / GPS TRACKING
+   ============================================================= */
+function renderSavedPlaces(){
+  const el=$("savedPlaces");
+  if(!state.saved.length){el.innerHTML='<div class="card"><div class="empty">ยังไม่มีสถานที่บันทึก</div></div>';return}
+  el.innerHTML=`<div class="card"><div class="title">สถานที่บันทึกไว้ <span class="mini">${state.saved.length} รายการ</span></div><div class="list">${state.saved.map((p,i)=>`<div class="item"><div class="item-head"><b>${esc(p.name||"สถานที่")}</b><span class="badge google">${esc(p.type||"อื่น ๆ")}</span></div><small>${esc(p.address||((p.lat||0).toFixed?.(5)||p.lat)+", "+((p.lng||0).toFixed?.(5)||p.lng))}</small><div class="item-actions"><button class="btn sm primary" data-saved-route="${i}">ใช้เป็นปลายทาง</button><button class="btn sm outline" data-saved-map="${i}">ดูแผนที่</button><button class="btn sm danger" data-saved-delete="${i}">ลบ</button></div></div>`).join("")}</div></div>`;
+  el.querySelectorAll("[data-saved-route]").forEach(b=>b.addEventListener("click",()=>{const p=state.saved[Number(b.dataset.savedRoute)];if(p){state.routeDestination={lat:p.lat,lng:p.lng,name:p.name,address:p.address||""};setDestinationUI(state.routeDestination);switchTab("plannerPanel")}}));
+  el.querySelectorAll("[data-saved-map]").forEach(b=>b.addEventListener("click",()=>{const p=state.saved[Number(b.dataset.savedMap)];if(p&&state.googleReady){centerOn({lat:p.lat,lng:p.lng},17);switchTab("mapPanel")}}));
+  el.querySelectorAll("[data-saved-delete]").forEach(b=>b.addEventListener("click",()=>{state.saved.splice(Number(b.dataset.savedDelete),1);saveJSON("bkk_saved_places",state.saved);renderSavedPlaces()}));
+}
 
-                clearInterval(stravaTimerInterval);
-                
-                // Add recorded distance to total accumulator
-                const addedKm = (stravaDistanceMeters / 1000);
-                const currentTotal = parseFloat(document.getElementById('strava-total-dist').innerText);
-                document.getElementById('strava-total-dist').innerText = (currentTotal + addedKm).toFixed(2);
-                
-                alert(`บันทึกกิจกรรม Strava สำเร็จ!\nระยะทางรวม: ${addedKm.toFixed(2)} กม.\nใช้เวลา: ${formatTimer(stravaSeconds)}`);
-            }
-        }
+function saveCurrentLocation(){
+  if(!state.userPos){toast("ยังไม่มี GPS ตำแหน่งปัจจุบัน");return}
+  const name=$("placeName").value.trim()||"ตำแหน่งที่บันทึก";const type=$("placeType").value;const p={id:crypto.randomUUID?.()||String(Date.now()),name,type,lat:state.userPos.lat,lng:state.userPos.lng,accuracy:state.userPos.accuracy,savedAt:new Date().toISOString()};
+  state.saved.unshift(p);state.saved=state.saved.slice(0,100);saveJSON("bkk_saved_places",state.saved);renderSavedPlaces();toast("บันทึก “"+name+"” แล้ว")
+}
+function addTrackPoint(pos){
+  const last=state.trackPoints[state.trackPoints.length-1];if(last&&haversine(last,pos)<8)return;state.trackPoints.push({lat:pos.lat,lng:pos.lng,t:Date.now(),accuracy:pos.accuracy});updateTrackingStats();
+}
+function startTracking(){
+  if(!state.userPos){toast("ต้องมี GPS ก่อนเริ่มติดตาม");return}
+  state.tracking=true;state.trackPoints=[];state.tripStart=Date.now();addTrackPoint(state.userPos);$("trackBtn").textContent="หยุดและบันทึกทริป";$("trackBtn").classList.add("danger");toast("เริ่มติดตาม GPS แล้ว")
+}
+function stopTracking(){
+  if(!state.tracking)return;state.tracking=false;const points=state.trackPoints.slice();const durationMs=points.length>1?Math.max(0,points[points.length-1].t-points[0].t):0;let meters=0;for(let i=1;i<points.length;i++)meters+=haversine(points[i-1],points[i]);const trip={id:Date.now(),startedAt:new Date(state.tripStart||Date.now()).toISOString(),endedAt:new Date().toISOString(),durationMs,distanceMeters:meters,points};state.history.unshift(trip);state.history=state.history.slice(0,30);saveJSON("bkk_trip_history",state.history);$("trackBtn").textContent="เริ่มติดตาม GPS";$("trackBtn").classList.remove("danger");updateTrackingStats();renderTripHistory();toast("บันทึกทริป "+formatDistance(meters)+" แล้ว")
+}
+function updateTrackingStats(){
+  const pts=state.trackPoints;if(!pts.length){$("trackingStats").textContent="ยังไม่มีจุด";return}let meters=0;for(let i=1;i<pts.length;i++)meters+=haversine(pts[i-1],pts[i]);const dur=pts.length>1?pts[pts.length-1].t-pts[0].t:0;$("trackingStats").textContent=(state.tracking?"กำลังติดตาม · ":"ทริปล่าสุด · ")+formatDistance(meters)+" · "+formatDurationMs(dur)+" · "+pts.length+" จุด";
+}
+function renderTripHistory(){
+  const el=$("tripHistory");
+  if(!state.history.length){el.innerHTML="";return}
+  el.innerHTML=`<div class="card"><div class="title">ประวัติการเดินทาง</div><div class="list">${state.history.map((t,i)=>`<div class="item"><div class="item-head"><b>${esc(formatDateTime(t.startedAt))}</b><span class="badge google">${esc(formatDistance(t.distanceMeters))}</span></div><small>${esc(formatDurationMs(t.durationMs))} · ${esc(String(t.points?.length||0))} GPS points</small><div class="item-actions"><button class="btn sm outline" data-trip-map="${i}">แสดงเส้นทาง</button><button class="btn sm danger" data-trip-delete="${i}">ลบ</button></div></div>`).join("")}</div></div>`;
+  el.querySelectorAll("[data-trip-delete]").forEach(b=>b.addEventListener("click",()=>{state.history.splice(Number(b.dataset.tripDelete),1);saveJSON("bkk_trip_history",state.history);renderTripHistory()}));
+  el.querySelectorAll("[data-trip-map]").forEach(b=>b.addEventListener("click",()=>showTripOnMap(state.history[Number(b.dataset.tripMap)])));
+}
 
-        function simulateStravaMovement() {
-            const currentPos = userMarker.getLatLng();
-            const newLat = currentPos.lat + (Math.random() - 0.48) * 0.0002;
-            const newLng = currentPos.lng + (Math.random() - 0.48) * 0.0002;
-            const newPos = new L.LatLng(newLat, newLng);
+function showTripOnMap(trip){if(!state.googleReady||!trip?.points?.length){toast("ทริปไม่มีจุด GPS หรือ Google Maps ยังไม่พร้อม");return}clearTripLine();const p=trip.points.map(x=>({lat:x.lat,lng:x.lng}));state.tripPolyline=new google.maps.Polyline({map:state.gMap,path:p,strokeColor:"#a855f7",strokeOpacity:.9,strokeWeight:6,zIndex:80});const {LatLngBounds}=google.maps;const b=new LatLngBounds();p.forEach(x=>b.extend(x));state.gMap.fitBounds(b);switchTab("mapPanel")}
+function clearTripLine(){state.tripPolyline?.setMap(null);state.tripPolyline=null}
+$("saveNamedBtn").addEventListener("click",saveCurrentLocation);$("trackBtn").addEventListener("click",()=>state.tracking?stopTracking():startTracking());$("clearHistoryBtn").addEventListener("click",()=>{state.history=[];saveJSON("bkk_trip_history",state.history);renderTripHistory();toast("ล้างประวัติแล้ว")});
 
-            userMarker.setLatLng(newPos);
-            stravaPathPoints.push(newPos);
-            stravaPolyline.setLatLngs(stravaPathPoints);
+/* =============================================================
+   18. SETTINGS / DATA EXPORT
+   ============================================================= */
+function loadSettingsUI(){
+  $("googleKey").value=cfg("bkk_google_key","");$("googleMapId").value=cfg("bkk_google_map_id","DEMO_MAP_ID");$("liveEndpoint").value=cfg("bkk_live_endpoint","");$("liveInterval").value=cfg("bkk_live_interval","20000");$("liveFeedType").value=cfg("bkk_live_type","generic");
+  $("railEndpoint").value=cfg("bkk_rail_endpoint","");$("busLiveEndpoint").value=cfg("bkk_live_endpoint","");$("overpassEndpoint").value=cfg("bkk_overpass",APP.overpassDefault);$("fuelKmL").value=cfg("bkk_fuel_kml",APP.defaultFuelKmL);$("fuelPrice").value=cfg("bkk_fuel_price",APP.defaultFuelPrice);$("defaultToll").value=cfg("bkk_default_toll",APP.defaultToll);
+}
+async function saveGoogleSettings(){const key=$("googleKey").value.trim();setCfg("bkk_google_key",key);setCfg("bkk_google_map_id",$("googleMapId").value.trim()||"DEMO_MAP_ID");googleBootPromise=null;state.googleLoading=false;if(key){await initGoogleMaps()}else{state.googleReady=false;initFallbackMap();setProvider("warn","Google Maps key ถูกล้างแล้ว")} }
+$("saveGoogleBtn").addEventListener("click",saveGoogleSettings);$("clearGoogleBtn").addEventListener("click",()=>{$("googleKey").value="";setCfg("bkk_google_key","");toast("ล้าง Google key แล้ว — โหลดใหม่เมื่อพร้อม")});$("headerSettingsBtn").addEventListener("click",()=>{switchTab("lifePanel");setTimeout(()=>$('settingsCard').scrollIntoView({behavior:"smooth",block:"start"}),50)});
+$("saveEndpointBtn").addEventListener("click",()=>{setCfg("bkk_rail_endpoint",$("railEndpoint").value.trim());setCfg("bkk_live_endpoint",$("busLiveEndpoint").value.trim());setCfg("bkk_overpass",$("overpassEndpoint").value.trim()||APP.overpassDefault);$("liveEndpoint").value=$("busLiveEndpoint").value.trim();toast("บันทึก endpoint แล้ว")});
+$("resetEndpointBtn").addEventListener("click",()=>{$("overpassEndpoint").value=APP.overpassDefault;setCfg("bkk_overpass",APP.overpassDefault);toast("คืนค่า Overpass แล้ว")});
+function exportAppData(){
+  const payload={app:APP.VERSION,exportedAt:new Date().toISOString(),savedPlaces:state.saved,tripHistory:state.history,settings:{googleMapId:cfg("bkk_google_map_id","DEMO_MAP_ID"),fuelKmL:cfg("bkk_fuel_kml",APP.defaultFuelKmL),fuelPrice:cfg("bkk_fuel_price",APP.defaultFuelPrice),defaultToll:cfg("bkk_default_toll",APP.defaultToll),overpass:cfg("bkk_overpass",APP.overpassDefault)}};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="bkk-ultimate-tracker-export.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast("Export JSON แล้ว")
+}
+function importAppData(file){const fr=new FileReader();fr.onload=()=>{try{const d=JSON.parse(fr.result);if(Array.isArray(d.savedPlaces)){state.saved=d.savedPlaces;saveJSON("bkk_saved_places",state.saved)}if(Array.isArray(d.tripHistory)){state.history=d.tripHistory;saveJSON("bkk_trip_history",state.history)}if(d.settings){if(d.settings.googleMapId)setCfg("bkk_google_map_id",d.settings.googleMapId);if(d.settings.fuelKmL!=null)setCfg("bkk_fuel_kml",d.settings.fuelKmL);if(d.settings.fuelPrice!=null)setCfg("bkk_fuel_price",d.settings.fuelPrice);if(d.settings.defaultToll!=null)setCfg("bkk_default_toll",d.settings.defaultToll);if(d.settings.overpass)setCfg("bkk_overpass",d.settings.overpass)}loadSettingsUI();renderSavedPlaces();renderTripHistory();toast("Import สำเร็จ")}catch(e){toast("ไฟล์ JSON ไม่ถูกต้อง")}};fr.readAsText(file)}
+$("exportDataBtn").addEventListener("click",exportAppData);$("importDataBtn").addEventListener("click",()=>openModal("importModal"));$("chooseImportBtn").addEventListener("click",()=>$("importFile").click());$("importFile").addEventListener("change",e=>{const f=e.target.files?.[0];if(f)importAppData(f);e.target.value="";closeModal("importModal")});
+$("wipeDataBtn").addEventListener("click",()=>{if(!confirm("ล้างสถานที่, ประวัติ และค่า settings ในเครื่องนี้?"))return;const keys=["bkk_saved_places","bkk_trip_history","bkk_google_key","bkk_google_map_id","bkk_fuel_kml","bkk_fuel_price","bkk_default_toll","bkk_live_endpoint","bkk_live_interval","bkk_live_type","bkk_rail_endpoint","bkk_overpass"];keys.forEach(k=>localStorage.removeItem(k));state.saved=[];state.history=[];loadSettingsUI();renderSavedPlaces();renderTripHistory();toast("ล้างข้อมูลในเครื่องแล้ว")});
+$("shareAppBtn").addEventListener("click",async()=>{try{const shareData={title:"BKK Ultimate Tracker — Google Pro",text:"เครื่องมือวางแผนเดินทางกรุงเทพฯ",url:location.href};if(navigator.share)await navigator.share(shareData);else{await navigator.clipboard.writeText(location.href);toast("คัดลอกลิงก์แล้ว")}}catch(e){console.warn(e)}});
 
-            stravaDistanceMeters += currentPos.distanceTo(newPos);
-            updateStravaHUD();
-        }
+/* =============================================================
+   19. MAP INTERACTION + BUS/PIN CONTROLS
+   ============================================================= */
+$("togglePlacesBtn").addEventListener("dblclick",()=>clearPlaceMarkers());
+window.addEventListener("keydown",e=>{
+  if(e.key==="Escape")document.querySelectorAll(".modal.show").forEach(m=>m.classList.remove("show"));
+  if(e.key.toLowerCase()==="g"&&!e.ctrlKey&&!e.metaKey)focusGPS();
+});
+window.addEventListener("online",()=>toast("อินเทอร์เน็ตกลับมาแล้ว"));window.addEventListener("offline",()=>toast("ออฟไลน์ — บริการ Google/OSM บางส่วนจะใช้ไม่ได้"));
+document.addEventListener("visibilitychange",()=>{if(document.hidden){clearInterval(state.liveTimer)}else if(cfg("bkk_live_endpoint"))startLivePolling()});
 
-        function updateStravaHUD() {
-            document.getElementById('hud-timer').innerText = formatTimer(stravaSeconds);
-            const km = (stravaDistanceMeters / 1000).toFixed(2);
-            document.getElementById('hud-distance').innerHTML = `${km} <span class="text-[10px]">กม.</span>`;
-            
-            const speedKmH = stravaSeconds > 0 ? ((stravaDistanceMeters / stravaSeconds) * 3.6).toFixed(1) : '0.0';
-            document.getElementById('hud-speed').innerHTML = `${speedKmH} <span class="text-[10px]">กม./ชม.</span>`;
+/* =============================================================
+   20. STARTUP / HEALTH CHECK
+   ============================================================= */
+function bootstrap(){
+  populatePlaceTypes();initRail();initPlannerDefaults();loadSettingsUI();renderSavedPlaces();renderTripHistory();initGPS();
+  $("routeStatus").textContent="รอคำสั่ง";
+  const key=cfg("bkk_google_key");if(key)initGoogleMaps();else initFallbackMap();
+  if(cfg("bkk_live_endpoint")){setTimeout(()=>startLivePolling(),1800)}
+  setProvider(key?"warn":"warn",key?"กำลังเตรียม Google Maps…":"ใส่ Google Maps key ในตั้งค่าเพื่อเปิดแผนที่เต็มรูปแบบ");
+}
+bootstrap();
 
-            const calories = Math.round(stravaDistanceMeters * 0.055);
-            document.getElementById('hud-calories').innerHTML = `${calories} <span class="text-[10px]">kcal</span>`;
-        }
+/* =============================================================
+   21. SMALL ACCESSIBILITY / SAFETY HELPERS
+   ============================================================= */
+function safeExternalUrl(value){try{const u=new URL(value,location.href);return ["https:","http:"].includes(u.protocol)?u.href:""}catch{return""}}
+function sanitizeAndSetHref(el,value){if(!el)return;const u=safeExternalUrl(value);if(u){el.href=u;el.target="_blank";el.rel="noopener noreferrer"}else el.removeAttribute("href")}
+function debounce(fn,ms){let t;return(...args)=>{clearTimeout(t);t=setTimeout(()=>fn(...args),ms)}}
+function throttle(fn,ms){let locked=false;return(...args)=>{if(locked)return;locked=true;fn(...args);setTimeout(()=>locked=false,ms)}}
+function routeToDestination(){const d=getRouteDestination();if(d?.lat!=null)centerOn(d,17)}
+function clearAllRouteGraphics(){clearRouteGraphics();$("routeMetrics").style.display="none";$("routeOptions").innerHTML="";$("routeSteps").innerHTML="";$("fuelCard").style.display="none"}
 
-        function formatTimer(sec) {
-            const hrs = Math.floor(sec / 3600).toString().padStart(2, '0');
-            const mins = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
-            const secs = (sec % 60).toString().padStart(2, '0');
-            return `${hrs}:${mins}:${secs}`;
-        }
+/* =============================================================
+   22. OPTIONAL RAIL JSON NORMALIZER
+   ============================================================= */
+async function loadRailEndpointForLine(){
+  const endpoint=cfg("bkk_rail_endpoint");if(!endpoint){toast("ยังไม่ได้ตั้ง Rail realtime endpoint");return[]}
+  try{const r=await fetch(endpoint,{headers:{Accept:"application/json"},cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();const arr=Array.isArray(d)?d:(d.trains||d.vehicles||d.data||[]);return arr.map(normalizeVehicle).filter(Boolean)}catch(e){console.warn(e);toast("Rail realtime endpoint ไม่ตอบกลับ");return[]}
+}
 
-        function switchTab(tabId) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            
-            // Reset nav button styling
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.className = 'nav-btn flex flex-col items-center gap-1 py-1 text-slate-400 hover:text-white';
-            });
+/* =============================================================
+   23. ROUTE URL SNAPSHOT
+   ============================================================= */
+function readRouteFromUrl(){
+  try{const p=new URLSearchParams(location.search);const lat=num(p.get("lat")),lng=num(p.get("lng"));const name=p.get("name");if(validCoord(lat,lng)){state.routeDestination={lat,lng,name:name?decodeURIComponent(name):"ปลายทางจากลิงก์"};setDestinationUI(state.routeDestination);if(state.googleReady)centerOn({lat,lng},16)}}catch(e){console.warn(e)}
+}
+window.addEventListener("load",()=>setTimeout(readRouteFromUrl,800));
+function buildShareUrl(){const d=state.routeDestination;if(!d)return location.href;const u=new URL(location.href);u.search=new URLSearchParams({lat:d.lat,lng:d.lng,name:d.name||""}).toString();return u.href}
 
-            // Show target tab
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-            document.getElementById(`nav-${tabId}`).className = 'nav-btn flex flex-col items-center gap-1 py-1 text-blue-400 font-medium';
+/* =============================================================
+   24. SERVICE STATUS
+   ============================================================= */
+function showServiceStatus(){
+  const items=[
+    ["Google Maps",!!state.googleReady],
+    ["Places",!!state.googleReady],
+    ["Routes/Transit",!!state.googleReady],
+    ["GPS",!!state.userPos],
+    ["Bus OSM",state.busRoutes.length>0],
+    ["Live vehicle",state.liveVehicles.length>0]
+  ];
+  $("providerStatus").title=items.map(x=>x[0]+": "+(x[1]?"OK":"OFF")).join(" · ");
+}
+setInterval(showServiceStatus,5000);
 
-            // Resize map if switching to map tab
-            if (tabId === 'map' && map) {
-                setTimeout(() => map.invalidateSize(), 150);
-            }
-        }
+/* =============================================================
+   25. PATCHABLE STATE EXPORT FOR DEBUGGING
+   ============================================================= */
+window.BKKTracker={
+  version:APP.VERSION,state,APP,RAIL,
+  searchPlaces:googleTextSearch,searchNearby:googleNearbySearch,
+  computeRoute:computeGoogleRoute,loadBusRoutes,selectBusRoute,loadLiveVehicles,
+  exportData:exportAppData,buildShareUrl
+};
 
-        function recenterMap() {
-            if (map && userMarker) {
-                map.flyTo(userMarker.getLatLng(), 15, { animate: true });
-            }
-        }
-
-        function calculateRoute() {
-            alert("กำลังคำนวณเส้นทางที่มีประสิทธิภาพสูงสุดจาก Google Maps & BKK Rail...");
-        }
-
-        function selectRouteOption(optionId) {
-            alert(`เลือกเส้นทางตัวเลือกที่ ${optionId} - ระบบเตรียมแจ้งเตือนเมื่อต้องเปลี่ยนสาย`);
-            switchTab('map');
-        }
-
-        function startCountdownTimer() {
-            let totalSeconds = 12 * 60 + 45;
-            setInterval(() => {
-                if (totalSeconds > 0) {
-                    totalSeconds--;
-                    const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-                    const s = (totalSeconds % 60).toString().padStart(2, '0');
-                    const countdownEl = document.getElementById('departure-countdown');
-                    if (countdownEl) countdownEl.innerText = `${m}:${s}`;
-                }
-            }, 1000);
-        }
-
-        function togglePwaModal() {
-            const modal = document.getElementById('pwa-modal');
-            modal.classList.toggle('hidden');
-        }
-
-        function toggleVehicleFilterModal() {
-            const modal = document.getElementById('filter-modal');
-            modal.classList.toggle('hidden');
-        }
-
-        function toggleVehicleType(type) {
-            activeFilters[type] = !activeFilters[type];
-            vehicles.forEach(v => {
-                if (v.type === type) {
-                    if (activeFilters[type]) {
-                        vehicleMarkers[v.id].addTo(map);
-                    } else {
-                        map.removeLayer(vehicleMarkers[v.id]);
-                    }
-                }
-            });
-        }
-
-        function addNewScheduleItem() {
-            const title = prompt("กรอกหัวข้อนัดหมาย/การเดินทาง:");
-            if (title) {
-                alert(`เพิ่มนัดหมาย "${title}" ลงในตารางเวลาชีวิตเรียบร้อยแล้ว!`);
-            }
-        }
-    </script>
+</script>
 </body>
 </html>
