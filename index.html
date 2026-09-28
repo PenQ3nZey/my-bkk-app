@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BKK Commute & Life Tracker (PWA)</title>
+
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BKK Tracker">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3448/3448339.png">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            orange: '#FF5722', // Strava vibe
+                            green: '#00A968',  // BTS Sukhumvit vibe
+                            blue: '#1976D2',   // MRT Blue Line vibe
+                            bus: '#D32F2F',    // BMTA Red Bus vibe
+                            dark: '#0F172A',
+                            card: '#1E293B'
+                        }
+                    },
+                    fontFamily: {
+                        kanit: ['Kanit', 'Prompt', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Leaflet.js CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts: Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Glassmorphic UI elements */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.82);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-panel-light {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        /* Custom Leaflet pulse marker */
+        .user-location-marker {
+            width: 16px;
+            height: 16px;
+            background-color: #2563EB;
+            border: 3px solid #FFFFFF;
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(37, 99, 235, 0.8);
+            animation: pulse-ring 2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+            70% { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+
+        /* Custom vehicle badge icons */
+        .vehicle-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 11px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            border: 2px solid white;
+            transition: all 0.3s ease;
+        }
+
+        /* Hide scrollbars */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Safe area padding for iPhones */
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 16px);
+        }
+        .pt-safe {
+            padding-top: env(safe-area-inset-top, 12px);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 h-screen w-screen relative overflow-hidden flex flex-col">
+
+    <!-- Top iOS Header Bar -->
+    <header class="absolute top-0 left-0 right-0 z-30 pt-safe px-4 py-2 pointer-events-none">
+        <div class="flex items-center justify-between pointer-events-auto">
+            <!-- App Identity -->
+            <div class="glass-panel rounded-2xl px-3 py-1.5 flex items-center gap-2 shadow-lg">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-orange via-brand-green to-brand-blue flex items-center justify-center text-white font-bold text-lg shadow">
+                    <i class="fa-solid fa-route"></i>
+                </div>
+                <div>
+                    <h1 class="text-xs font-bold leading-tight tracking-wide text-white">BKK COMMUTE</h1>
+                    <p class="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Live GPS BKK
+                    </p>
+                </div>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div class="flex items-center gap-2">
+                <!-- Search Button -->
+                <button onclick="switchTab('planner')" class="glass-panel w-10 h-10 rounded-2xl flex items-center justify-center text-white active:scale-95 transition shadow-lg">
+                    <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                </button>
+                <!-- iOS PWA Help -->
+                <button onclick="togglePwaModal()" class="glass-panel px-3 h-10 rounded-2xl flex items-center gap-1.5 text-xs font-medium text-amber-300 active:scale-95 transition shadow-lg">
+                    <i class="fa-brands fa-apple text-base"></i>
+                    <span class="hidden sm:inline">ติดหน้าจอ</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- iOS Safari PWA Install Modal Prompt -->
+    <div id="pwa-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900/95 rounded-3xl p-6 max-w-sm w-full text-slate-100 border border-slate-700 shadow-2xl relative animate-bounce-in">
+            <button onclick="togglePwaModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="text-center mb-4">
+                <div class="w-16 h-16 bg-gradient-to-tr from-brand-orange to-brand-blue rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 shadow-lg">
+                    <i class="fa-solid fa-mobile-screen"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">ติดตั้งลงบน iPhone ของคุณ</h3>
+                <p class="text-xs text-slate-300 mt-1">ใช้งานเต็มหน้าจอเหมือน App จริงโดยไม่ต้องโหลดผ่าน App Store</p>
+            </div>
+            <div class="space-y-3 text-xs bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700/60 mb-5">
+                <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center font-bold text-amber-400">1</span>
+                    <span>กดปุ่ม <i class="fa-solid fa-share-from-square text-sky-400 mx-1"></i> (แชร์) ด้านล่างของ Safari</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center font-bold text-amber-400">2</span>
+                    <span>เลื่อนลงมาแล้วเลือก <strong class="text-white">"เพิ่มไปยังหน้าจอหลัก"</strong></span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center font-bold text-amber-400">3</span>
+                    <span>กด <strong class="text-white">"เพิ่ม"</strong> ที่มุมขวาบน พร้อมเปิดใช้งาน!</span>
+                </div>
+            </div>
+            <button onclick="togglePwaModal()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-medium text-white text-xs shadow-lg active:scale-95 transition">
+                รับทราบ และย้อนกลับ
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN VIEW CONTAINER -->
+    <main class="relative flex-1 w-full h-full overflow-hidden">
+        
+        <!-- TAB 1: INTERACTIVE MAP VIEW (DEFAULT) -->
+        <div id="tab-map" class="tab-content absolute inset-0 w-full h-full">
+            <div id="map"></div>
+
+            <!-- Map Floating Controls -->
+            <div class="absolute right-4 top-20 z-20 flex flex-col gap-2.5">
+                <!-- User Location Toggle -->
+                <button id="btn-recenter" onclick="recenterMap()" class="glass-panel w-11 h-11 rounded-2xl flex items-center justify-center text-sky-400 shadow-xl active:scale-90 transition">
+                    <i class="fa-solid fa-location-crosshairs text-lg"></i>
+                </button>
+                <!-- Vehicle Filter Toggle -->
+                <button onclick="toggleVehicleFilterModal()" class="glass-panel w-11 h-11 rounded-2xl flex items-center justify-center text-amber-400 shadow-xl active:scale-90 transition">
+                    <i class="fa-solid fa-filter text-base"></i>
+                </button>
+            </div>
+
+            <!-- Strava Active Workout Overlay HUD (Shows when active recording) -->
+            <div id="strava-hud" class="hidden absolute top-20 left-4 right-16 z-20 glass-panel rounded-2xl p-3 border-l-4 border-brand-orange shadow-2xl transition-all">
+                <div class="flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+                        <span class="font-bold text-brand-orange tracking-wider">STRAVA LIVE RECORD</span>
+                    </div>
+                    <span id="hud-timer" class="font-mono font-bold text-amber-300">00:00:00</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-slate-700/50 text-center">
+                    <div>
+                        <div class="text-[10px] text-slate-400">ระยะทาง</div>
+                        <div id="hud-distance" class="text-sm font-bold text-white">0.00 <span class="text-[10px]">กม.</span></div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-400">ความเร็ว</div>
+                        <div id="hud-speed" class="text-sm font-bold text-white">0.0 <span class="text-[10px]">กม./ชม.</span></div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-400">แคลอรี</div>
+                        <div id="hud-calories" class="text-sm font-bold text-white">0 <span class="text-[10px]">kcal</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floating Selected Vehicle Info Card (ViaBus / BKK Rail popup style) -->
+            <div id="vehicle-card" class="hidden absolute bottom-24 left-4 right-4 z-20 glass-panel rounded-3xl p-4 border border-slate-700/80 shadow-2xl transition-all">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-3">
+                        <div id="vc-icon-bg" class="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center text-white text-xl font-bold shadow-md">
+                            <i id="vc-icon" class="fa-solid fa-bus"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 id="vc-title" class="text-base font-bold text-white">สาย 511 (ขสมก.)</h3>
+                                <span id="vc-tag" class="px-2 py-0.5 rounded-full text-[10px] bg-red-500/20 text-red-400 font-medium">รถเมล์ปรับอากาศ</span>
+                            </div>
+                            <p id="vc-route" class="text-xs text-slate-300 mt-0.5">ปากน้ำ - สายใต้ใหม่ (ทางด่วน)</p>
+                        </div>
+                    </div>
+                    <button onclick="closeVehicleCard()" class="text-slate-400 hover:text-white p-1">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-700/60 text-center text-xs">
+                    <div class="bg-slate-800/60 p-2 rounded-xl">
+                        <span class="text-[10px] text-slate-400 block">ป้ายถัดไป</span>
+                        <strong id="vc-next-stop" class="text-sky-300">BTS อโศก</strong>
+                    </div>
+                    <div class="bg-slate-800/60 p-2 rounded-xl">
+                        <span class="text-[10px] text-slate-400 block">คาดว่าจะถึงใน</span>
+                        <strong id="vc-eta" class="text-amber-400">4 นาที</strong>
+                    </div>
+                    <div class="bg-slate-800/60 p-2 rounded-xl">
+                        <span class="text-[10px] text-slate-400 block">ความเร็วปัจจุบัน</span>
+                        <strong id="vc-speed" class="text-emerald-400">28 กม./ชม.</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: VIA BUS & BKK RAIL LIVE LIST -->
+        <div id="tab-live" class="tab-content hidden absolute inset-0 w-full h-full bg-slate-900 pt-20 pb-24 px-4 overflow-y-auto no-scrollbar">
+            <div class="max-w-md mx-auto space-y-4">
+                
+                <div class="flex items-center justify-between mb-2">
+                    <div>
+                        <h2 class="text-lg font-bold text-white">ตำแหน่งรถในรัศมีใกล้คุณ</h2>
+                        <p class="text-xs text-slate-400">อัปเดตตำแหน่ง Real-time จาก ขสมก. & BKK Rail</p>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        <i class="fa-solid fa-wifi text-[10px] mr-1"></i> Live GPS
+                    </span>
+                </div>
+
+                <!-- Category Tabs -->
+                <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
+                    <button class="px-3 py-2 rounded-xl bg-blue-600 text-white font-medium whitespace-nowrap shadow">ทั้งหมด (6)</button>
+                    <button class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium whitespace-nowrap border border-slate-700">ขสมก. รถเมล์</button>
+                    <button class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium whitespace-nowrap border border-slate-700">BTS สายสุขุมวิท</button>
+                    <button class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium whitespace-nowrap border border-slate-700">MRT สายสีน้ำเงิน</button>
+                </div>
+
+                <!-- Transit Item Cards -->
+                <div id="live-vehicles-container" class="space-y-3">
+                    <!-- Populated dynamically via JS -->
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 3: MULTI-MODAL ROUTE PLANNER -->
+        <div id="tab-planner" class="tab-content hidden absolute inset-0 w-full h-full bg-slate-900 pt-20 pb-24 px-4 overflow-y-auto no-scrollbar">
+            <div class="max-w-md mx-auto space-y-4">
+                
+                <div class="glass-panel p-4 rounded-3xl border border-slate-700/70 shadow-xl space-y-3">
+                    <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-diamond-turn-right text-brand-orange"></i> ค้นหาเส้นทางผสม (Multi-modal)
+                    </h2>
+
+                    <!-- Input Fields -->
+                    <div class="space-y-2 relative">
+                        <div class="flex items-center gap-3 bg-slate-800/80 px-3 py-2.5 rounded-2xl border border-slate-700">
+                            <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+                            <input id="plan-from" type="text" value="ตำแหน่งปัจจุบัน (อนุสาวรีย์ชัยฯ)" class="bg-transparent text-xs text-white focus:outline-none w-full placeholder-slate-500">
+                        </div>
+                        <div class="flex items-center gap-3 bg-slate-800/80 px-3 py-2.5 rounded-2xl border border-slate-700">
+                            <span class="w-2.5 h-2.5 rounded-full bg-brand-orange"></span>
+                            <input id="plan-to" type="text" value="BTS อโศก / Terminal 21" class="bg-transparent text-xs text-white focus:outline-none w-full placeholder-slate-500">
+                        </div>
+                    </div>
+
+                    <button onclick="calculateRoute()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-emerald-600 rounded-2xl font-semibold text-xs text-white shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-route"></i> คำนวณเส้นทางและเวลาที่ดีที่สุด
+                    </button>
+                </div>
+
+                <!-- Suggested Route Results -->
+                <div id="route-results" class="space-y-3">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">เส้นทางแนะนำ (อ้างอิงจราจร Real-time)</h3>
+
+                    <!-- Route Option 1 (Fastest) -->
+                    <div onclick="selectRouteOption(1)" class="glass-panel p-4 rounded-3xl border border-emerald-500/50 bg-slate-800/50 space-y-3 cursor-pointer hover:border-emerald-400 transition">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">เร็วที่สุด (32 นาที)</span>
+                            <span class="text-xs font-bold text-amber-300">฿38 บาท</span>
+                        </div>
+                        
+                        <!-- Route Steps Badge Line -->
+                        <div class="flex items-center gap-2 text-xs flex-wrap">
+                            <span class="flex items-center gap-1 bg-slate-700/80 px-2 py-1 rounded-lg text-slate-200">
+                                <i class="fa-solid fa-person-walking text-slate-400"></i> 400ม.
+                            </span>
+                            <i class="fa-solid fa-chevron-right text-[10px] text-slate-500"></i>
+                            <span class="flex items-center gap-1 bg-red-600/30 text-red-300 border border-red-500/40 px-2 py-1 rounded-lg font-bold">
+                                <i class="fa-solid fa-bus"></i> รถเมล์ 511
+                            </span>
+                            <i class="fa-solid fa-chevron-right text-[10px] text-slate-500"></i>
+                            <span class="flex items-center gap-1 bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-2 py-1 rounded-lg font-bold">
+                                <i class="fa-solid fa-train text-xs"></i> BTS สุขุมวิท
+                            </span>
+                        </div>
+
+                        <p class="text-xs text-slate-300">
+                            ขึ้นสาย 511 ที่ป้ายพญาไท ลงต่อ BTS ราชเทวี มุ่งหน้าอโศก
+                        </p>
+                    </div>
+
+                    <!-- Route Option 2 (Cheapest) -->
+                    <div onclick="selectRouteOption(2)" class="glass-panel p-4 rounded-3xl border border-slate-700/80 bg-slate-800/30 space-y-3 cursor-pointer hover:border-slate-500 transition">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-400 text-[10px] font-bold">ประหยัดสุด (45 นาที)</span>
+                            <span class="text-xs font-bold text-emerald-400">฿15 บาท</span>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 text-xs flex-wrap">
+                            <span class="flex items-center gap-1 bg-red-600/30 text-red-300 border border-red-500/40 px-2 py-1 rounded-lg font-bold">
+                                <i class="fa-solid fa-bus"></i> รถเมล์ สาย 137
+                            </span>
+                            <i class="fa-solid fa-chevron-right text-[10px] text-slate-500"></i>
+                            <span class="flex items-center gap-1 bg-slate-700/80 px-2 py-1 rounded-lg text-slate-200">
+                                <i class="fa-solid fa-person-walking text-slate-400"></i> เดิน 350ม.
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400">
+                            ต่อเดียวจบ ไม่ต้องเปลี่ยนสาย แต่ใช้เวลานานขึ้นเล็กน้อย
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 4: STRAVA FITNESS & DISTANCE TRACKER -->
+        <div id="tab-strava" class="tab-content hidden absolute inset-0 w-full h-full bg-slate-900 pt-20 pb-24 px-4 overflow-y-auto no-scrollbar">
+            <div class="max-w-md mx-auto space-y-4">
+                
+                <!-- Strava Header Widget -->
+                <div class="bg-gradient-to-r from-orange-600 to-red-600 p-5 rounded-3xl text-white shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl font-black">
+                        <i class="fa-solid fa-person-running"></i>
+                    </div>
+                    <div class="flex items-center justify-between relative z-10">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-brands fa-strava text-2xl text-amber-300"></i>
+                            <h2 class="font-bold text-base tracking-wide">STRAVA BKK CONNECT</h2>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-md bg-black/30 text-[10px] font-semibold text-amber-200">
+                            Syncing GPS
+                        </span>
+                    </div>
+
+                    <!-- Daily Progress Summary -->
+                    <div class="grid grid-cols-2 gap-3 mt-4 relative z-10">
+                        <div class="bg-black/25 p-3 rounded-2xl backdrop-blur-md">
+                            <span class="text-[10px] text-orange-200 block">สะสมวันนี้ (เดิน+ปั่น)</span>
+                            <div class="text-xl font-black text-white mt-0.5">
+                                <span id="strava-total-dist">3.42</span> <span class="text-xs font-normal">กม.</span>
+                            </div>
+                        </div>
+                        <div class="bg-black/25 p-3 rounded-2xl backdrop-blur-md">
+                            <span class="text-[10px] text-orange-200 block">เผาผลาญแคลอรี</span>
+                            <div class="text-xl font-black text-white mt-0.5">
+                                <span id="strava-total-cal">184</span> <span class="text-xs font-normal">kcal</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Record Activity Control -->
+                <div class="glass-panel p-5 rounded-3xl border border-slate-700/80 text-center space-y-3">
+                    <h3 class="text-sm font-bold text-white">บันทึกการเดิน / ปั่นจักรยานแบบ Real-time</h3>
+                    <p class="text-xs text-slate-400">ระบบจะวาดเส้นทางบนแผนที่และคำนวณความเร็วแบบวินาทีต่อวินาที</p>
+
+                    <button id="btn-toggle-strava" onclick="toggleStravaTracking()" class="w-full py-3.5 rounded-2xl font-bold text-sm bg-brand-orange hover:bg-orange-600 text-white shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+                        <i id="strava-btn-icon" class="fa-solid fa-play"></i>
+                        <span id="strava-btn-text">เริ่มบันทึกกิจกรรม (Start Activity)</span>
+                    </button>
+                </div>
+
+                <!-- Activity Log List -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">กิจกรรมย้อนหลังใน กทม.</h4>
+                    
+                    <div class="glass-panel p-3.5 rounded-2xl border border-slate-700/50 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-orange-500/20 text-brand-orange flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-person-walking"></i>
+                            </div>
+                            <div>
+                                <h5 class="text-xs font-bold text-white">เดินเชื่อมต่อ BTS สยาม -> เซ็นทรัลเวิลด์</h5>
+                                <p class="text-[10px] text-slate-400">วันนี้ 08:20 น. • Pace 11'24"</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-white">1.10 กม.</div>
+                            <div class="text-[10px] text-emerald-400">62 kcal</div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-3.5 rounded-2xl border border-slate-700/50 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-bicycle"></i>
+                            </div>
+                            <div>
+                                <h5 class="text-xs font-bold text-white">ปั่นจักรยานสวนเบญจกิติ</h5>
+                                <p class="text-[10px] text-slate-400">เมื่อวาน 17:45 น. • 18.4 กม./ชม.</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-white">5.80 กม.</div>
+                            <div class="text-[10px] text-emerald-400">195 kcal</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 5: DAILY LIFE SCHEDULER (กำหนดเวลาชีวิต) -->
+        <div id="tab-schedule" class="tab-content hidden absolute inset-0 w-full h-full bg-slate-900 pt-20 pb-24 px-4 overflow-y-auto no-scrollbar">
+            <div class="max-w-md mx-auto space-y-4">
+                
+                <!-- Smart Countdown Banner -->
+                <div class="bg-gradient-to-r from-indigo-900 via-slate-800 to-blue-900 p-4 rounded-3xl border border-indigo-500/40 shadow-xl space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                            <i class="fa-solid fa-bell mr-1"></i> เตือนเวลาเดินทางถัดไป
+                        </span>
+                        <span class="text-slate-400">อ้างอิงสภาพการจราจร</span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between pt-1">
+                        <div>
+                            <h3 class="text-base font-bold text-white">ต้องออกจากบ้านเพื่อไป BTS</h3>
+                            <p class="text-xs text-indigo-200">ต่อรถเมล์สาย 511 เพื่อให้ทันนัด 09:00 น.</p>
+                        </div>
+                        <div class="text-right">
+                            <div id="departure-countdown" class="text-xl font-mono font-black text-amber-400">12:45</div>
+                            <span class="text-[10px] text-slate-400">นาที (เหลือเวลา)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule Agenda list -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-white">ตารางเวลาชีวิตวันนี้</h3>
+                        <button onclick="addNewScheduleItem()" class="text-xs text-sky-400 font-medium hover:underline">
+                            + เพิ่มนัดหมาย
+                        </button>
+                    </div>
+
+                    <!-- Agenda Item 1 -->
+                    <div class="glass-panel p-3.5 rounded-2xl border-l-4 border-amber-400 flex items-center justify-between">
+                        <div class="space-y-0.5">
+                            <div class="text-[10px] font-bold text-amber-400">07:30 น. (อีก 12 นาที)</div>
+                            <h4 class="text-xs font-bold text-white">ออกจากบ้าน ขึ้นรถเมล์สาย 511</h4>
+                            <p class="text-[10px] text-slate-400">ป้ายรถเมล์หน้าปากซอยสุขุมวิท 101</p>
+                        </div>
+                        <span class="px-2 py-1 rounded-lg bg-slate-800 text-[10px] text-slate-300 border border-slate-700">
+                            รถเมล์
+                        </span>
+                    </div>
+
+                    <!-- Agenda Item 2 -->
+                    <div class="glass-panel p-3.5 rounded-2xl border-l-4 border-emerald-500 flex items-center justify-between opacity-80">
+                        <div class="space-y-0.5">
+                            <div class="text-[10px] font-bold text-emerald-400">08:05 น.</div>
+                            <h4 class="text-xs font-bold text-white">เปลี่ยนขึ้น BTS อุดมสุข -> อโศก</h4>
+                            <p class="text-[10px] text-slate-400">คาดการณ์เวลาบนขบวน 18 นาที</p>
+                        </div>
+                        <span class="px-2 py-1 rounded-lg bg-emerald-950/60 text-[10px] text-emerald-300 border border-emerald-800">
+                            BTS
+                        </span>
+                    </div>
+
+                    <!-- Agenda Item 3 -->
+                    <div class="glass-panel p-3.5 rounded-2xl border-l-4 border-blue-500 flex items-center justify-between opacity-70">
+                        <div class="space-y-0.5">
+                            <div class="text-[10px] font-bold text-blue-400">08:45 น.</div>
+                            <h4 class="text-xs font-bold text-white">เดิน Skywalk เข้าออฟฟิศ (บันทึก Strava)</h4>
+                            <p class="text-[10px] text-slate-400">เป้าหมายเดิน 400 เมตร</p>
+                        </div>
+                        <span class="px-2 py-1 rounded-lg bg-slate-800 text-[10px] text-slate-300 border border-slate-700">
+                            เดิน
+                        </span>
+                    </div>
+
+                    <!-- Agenda Item 4 -->
+                    <div class="glass-panel p-3.5 rounded-2xl border-l-4 border-purple-500 flex items-center justify-between opacity-60">
+                        <div class="space-y-0.5">
+                            <div class="text-[10px] font-bold text-purple-400">09:00 น.</div>
+                            <h4 class="text-xs font-bold text-white">ประชุมทีมประจำสัปดาห์ (Morning Sync)</h4>
+                            <p class="text-[10px] text-slate-400">ห้องประชุม 3 ชั้น 14</p>
+                        </div>
+                        <span class="px-2 py-1 rounded-lg bg-purple-950/60 text-[10px] text-purple-300 border border-purple-800">
+                            งาน
+                        </span>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- BOTTOM NAVIGATION BAR (iOS Native Style) -->
+    <nav class="fixed bottom-0 left-0 right-0 z-40 glass-panel border-t border-slate-800 pb-safe pt-2">
+        <div class="max-w-md mx-auto grid grid-cols-5 text-center px-2">
+            <!-- Map Tab Button -->
+            <button onclick="switchTab('map')" id="nav-map" class="nav-btn flex flex-col items-center gap-1 py-1 text-blue-400 font-medium">
+                <i class="fa-solid fa-map-location-dot text-base"></i>
+                <span class="text-[10px]">แผนที่</span>
+            </button>
+
+            <!-- Transit Live Tab Button -->
+            <button onclick="switchTab('live')" id="nav-live" class="nav-btn flex flex-col items-center gap-1 py-1 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-bus text-base"></i>
+                <span class="text-[10px]">สายรถ/BTS</span>
+            </button>
+
+            <!-- Planner Tab Button -->
+            <button onclick="switchTab('planner')" id="nav-planner" class="nav-btn flex flex-col items-center gap-1 py-1 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-route text-base"></i>
+                <span class="text-[10px]">วางแผน</span>
+            </button>
+
+            <!-- Strava Tab Button -->
+            <button onclick="switchTab('strava')" id="nav-strava" class="nav-btn flex flex-col items-center gap-1 py-1 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-heart-pulse text-base"></i>
+                <span class="text-[10px]">Strava</span>
+            </button>
+
+            <!-- Life Schedule Tab Button -->
+            <button onclick="switchTab('schedule')" id="nav-schedule" class="nav-btn flex flex-col items-center gap-1 py-1 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-clock text-base"></i>
+                <span class="text-[10px]">เวลาชีวิต</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Filter Modal -->
+    <div id="filter-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 rounded-3xl p-5 max-w-xs w-full text-white border border-slate-700 shadow-2xl">
+            <h3 class="text-sm font-bold mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-filter text-amber-400"></i> เลือกแสดงยานพาหนะ
+            </h3>
+            <div class="space-y-2 text-xs">
+                <label class="flex items-center gap-2.5 p-2 rounded-xl bg-slate-800/80 cursor-pointer">
+                    <input type="checkbox" checked onchange="toggleVehicleType('bus')" class="rounded text-blue-600 focus:ring-0">
+                    <span>ขสมก. / รถเมล์ (Bus)</span>
+                </label>
+                <label class="flex items-center gap-2.5 p-2 rounded-xl bg-slate-800/80 cursor-pointer">
+                    <input type="checkbox" checked onchange="toggleVehicleType('bts')" class="rounded text-blue-600 focus:ring-0">
+                    <span>BTS รถไฟฟ้าสายสีเขียว</span>
+                </label>
+                <label class="flex items-center gap-2.5 p-2 rounded-xl bg-slate-800/80 cursor-pointer">
+                    <input type="checkbox" checked onchange="toggleVehicleType('mrt')" class="rounded text-blue-600 focus:ring-0">
+                    <span>MRT รถไฟฟ้าสายสีน้ำเงิน</span>
+                </label>
+            </div>
+            <button onclick="toggleVehicleFilterModal()" class="w-full mt-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-semibold">
+                ปิด
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- GLOBAL APP STATE & SIMULATION DATA ---
+        let map;
+        let userMarker;
+        let stravaPolyline;
+        let stravaPathPoints = [];
+        let isTrackingStrava = false;
+        let stravaSeconds = 0;
+        let stravaTimerInterval = null;
+        let stravaDistanceMeters = 0;
+
+        // Default Bangkok Center (Siam Area)
+        const DEFAULT_BKK_CENTER = [13.7456, 100.5342];
+
+        // Simulated Real-time Vehicles moving in Bangkok
+        let vehicles = [
+            {
+                id: 'bus-511-1',
+                type: 'bus',
+                line: '511',
+                name: 'สาย 511 (ขสมก.)',
+                routeStr: 'ปากน้ำ - สายใต้ใหม่',
+                lat: 13.7420,
+                lng: 100.5400,
+                targetLat: 13.7460,
+                targetLng: 100.5300,
+                speed: 26,
+                nextStop: 'BTS อโศก',
+                eta: '3 นาที',
+                color: '#D32F2F',
+                icon: 'fa-bus'
+            },
+            {
+                id: 'bus-137-1',
+                type: 'bus',
+                line: '137',
+                name: 'สาย 137 (วนขวา)',
+                routeStr: 'รามคำแหง - รัชดาภิเษก',
+                lat: 13.7580,
+                lng: 100.5650,
+                targetLat: 13.7620,
+                targetLng: 100.5600,
+                speed: 31,
+                nextStop: 'MRT พระราม 9',
+                eta: '5 นาที',
+                color: '#D32F2F',
+                icon: 'fa-bus'
+            },
+            {
+                id: 'bts-sukhumvit-1',
+                type: 'bts',
+                line: 'BTS Green',
+                name: 'BTS สายสุขุมวิท',
+                routeStr: 'คูคต - เคหะฯ',
+                lat: 13.7450,
+                lng: 100.5350,
+                targetLat: 13.7380,
+                targetLng: 100.5600,
+                speed: 52,
+                nextStop: 'สถานีชิดลม',
+                eta: '1 นาที',
+                color: '#00A968',
+                icon: 'fa-train'
+            },
+            {
+                id: 'mrt-blue-1',
+                type: 'mrt',
+                line: 'MRT Blue',
+                name: 'MRT สายสีน้ำเงิน',
+                routeStr: 'หลักสอง - ท่าพระ',
+                lat: 13.7370,
+                lng: 100.5600,
+                targetLat: 13.7280,
+                targetLng: 100.5340,
+                speed: 48,
+                nextStop: 'สถานีสุขุมวิท',
+                eta: '2 นาที',
+                color: '#1976D2',
+                icon: 'fa-subway'
+            }
+        ];
+
+        let vehicleMarkers = {};
+        let activeFilters = { bus: true, bts: true, mrt: true };
+
+        window.onload = function() {
+            initLeafletMap();
+            initLiveVehicles();
+            renderLiveVehicleList();
+            startVehicleSimulationLoop();
+            startCountdownTimer();
+        };
+
+        function initLeafletMap() {
+            // Initialize Leaflet Map centered on Bangkok
+            map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView(DEFAULT_BKK_CENTER, 14);
+
+            // Dark styled CartoDB Tiles for clean modern transit look
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19,
+                subdomains: 'abcd'
+            }).addTo(map);
+
+            // Add Leaflet zoom control to top left
+            L.control.zoom({ position: 'topleft' }).addTo(map);
+
+            // Set up Simulated User Location Marker
+            const userIcon = L.divIcon({
+                className: 'user-location-marker-container',
+                html: `<div class="user-location-marker"></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            userMarker = L.marker(DEFAULT_BKK_CENTER, { icon: userIcon }).addTo(map);
+            userMarker.bindPopup("<b>ตำแหน่งของคุณ</b><br>สยามพารากอน กรุงเทพฯ").openPopup();
+
+            // Strava Path Polyline initialization
+            stravaPolyline = L.polyline([], {
+                color: '#FF5722',
+                weight: 5,
+                opacity: 0.9,
+                dashArray: '8, 8'
+            }).addTo(map);
+        }
+
+        function initLiveVehicles() {
+            vehicles.forEach(v => {
+                const badgeHtml = `
+                    <div class="vehicle-badge" style="background-color: ${v.color}; width: 36px; height: 36px;">
+                        <i class="fa-solid ${v.icon}"></i>
+                    </div>
+                `;
+                
+                const customIcon = L.divIcon({
+                    className: 'custom-vehicle-icon',
+                    html: badgeHtml,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                });
+
+                const marker = L.marker([v.lat, v.lng], { icon: customIcon }).addTo(map);
+                
+                // Click handler to open bottom vehicle info card
+                marker.on('click', () => {
+                    showVehicleCard(v);
+                });
+
+                vehicleMarkers[v.id] = marker;
+            });
+        }
+
+        // Animate vehicles smoothly to simulate live movement
+        function startVehicleSimulationLoop() {
+            setInterval(() => {
+                vehicles.forEach(v => {
+                    // Slight step towards target
+                    const step = 0.0003;
+                    if (v.lat < v.targetLat) v.lat += step * (Math.random() * 0.8 + 0.2);
+                    else v.lat -= step * (Math.random() * 0.8 + 0.2);
+
+                    if (v.lng < v.targetLng) v.lng += step * (Math.random() * 0.8 + 0.2);
+                    else v.lng -= step * (Math.random() * 0.8 + 0.2);
+
+                    // Update Leaflet marker position
+                    if (vehicleMarkers[v.id]) {
+                        vehicleMarkers[v.id].setLatLng([v.lat, v.lng]);
+                    }
+                });
+
+                // Update Strava live tracking if enabled
+                if (isTrackingStrava) {
+                    simulateStravaMovement();
+                }
+
+            }, 2500);
+        }
+
+        // Show Vehicle Info Card on map click
+        function showVehicleCard(v) {
+            document.getElementById('vc-title').innerText = v.name;
+            document.getElementById('vc-route').innerText = v.routeStr;
+            document.getElementById('vc-next-stop').innerText = v.nextStop;
+            document.getElementById('vc-eta').innerText = v.eta;
+            document.getElementById('vc-speed').innerText = `${v.speed} กม./ชม.`;
+            document.getElementById('vc-icon-bg').style.backgroundColor = v.color;
+            document.getElementById('vc-icon').className = `fa-solid ${v.icon}`;
+            
+            document.getElementById('vehicle-card').classList.remove('hidden');
+        }
+
+        function closeVehicleCard() {
+            document.getElementById('vehicle-card').classList.add('hidden');
+        }
+
+        function renderLiveVehicleList() {
+            const container = document.getElementById('live-vehicles-container');
+            container.innerHTML = '';
+
+            vehicles.forEach(v => {
+                const item = document.createElement('div');
+                item.className = 'glass-panel p-3.5 rounded-2xl border border-slate-700/60 flex items-center justify-between cursor-pointer hover:border-slate-500 transition';
+                item.onclick = () => {
+                    switchTab('map');
+                    map.flyTo([v.lat, v.lng], 16);
+                    showVehicleCard(v);
+                };
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow" style="background-color: ${v.color}">
+                            <i class="fa-solid ${v.icon}"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-xs font-bold text-white">${v.name}</h4>
+                                <span class="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300 font-mono">${v.line}</span>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-0.5">${v.routeStr}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs font-bold text-amber-400">${v.eta}</div>
+                        <div class="text-[9px] text-slate-400">ถัดไป: ${v.nextStop}</div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function toggleStravaTracking() {
+            isTrackingStrava = !isTrackingStrava;
+            const btn = document.getElementById('btn-toggle-strava');
+            const btnIcon = document.getElementById('strava-btn-icon');
+            const btnText = document.getElementById('strava-btn-text');
+            const hud = document.getElementById('strava-hud');
+
+            if (isTrackingStrava) {
+                // Start Tracking
+                btn.className = 'w-full py-3.5 rounded-2xl font-bold text-sm bg-red-600 hover:bg-red-700 text-white shadow-lg active:scale-95 transition flex items-center justify-center gap-2 animate-pulse';
+                btnIcon.className = 'fa-solid fa-stop';
+                btnText.innerText = 'หยุดบันทึกกิจกรรม (Stop & Save)';
+                hud.classList.remove('hidden');
+
+                stravaSeconds = 0;
+                stravaDistanceMeters = 0;
+                stravaPathPoints = [map.getCenter()];
+                stravaPolyline.setLatLngs(stravaPathPoints);
+
+                stravaTimerInterval = setInterval(() => {
+                    stravaSeconds++;
+                    updateStravaHUD();
+                }, 1000);
+
+            } else {
+                // Stop Tracking
+                btn.className = 'w-full py-3.5 rounded-2xl font-bold text-sm bg-brand-orange hover:bg-orange-600 text-white shadow-lg active:scale-95 transition flex items-center justify-center gap-2';
+                btnIcon.className = 'fa-solid fa-play';
+                btnText.innerText = 'เริ่มบันทึกกิจกรรม (Start Activity)';
+                hud.classList.add('hidden');
+
+                clearInterval(stravaTimerInterval);
+                
+                // Add recorded distance to total accumulator
+                const addedKm = (stravaDistanceMeters / 1000);
+                const currentTotal = parseFloat(document.getElementById('strava-total-dist').innerText);
+                document.getElementById('strava-total-dist').innerText = (currentTotal + addedKm).toFixed(2);
+                
+                alert(`บันทึกกิจกรรม Strava สำเร็จ!\nระยะทางรวม: ${addedKm.toFixed(2)} กม.\nใช้เวลา: ${formatTimer(stravaSeconds)}`);
+            }
+        }
+
+        function simulateStravaMovement() {
+            const currentPos = userMarker.getLatLng();
+            const newLat = currentPos.lat + (Math.random() - 0.48) * 0.0002;
+            const newLng = currentPos.lng + (Math.random() - 0.48) * 0.0002;
+            const newPos = new L.LatLng(newLat, newLng);
+
+            userMarker.setLatLng(newPos);
+            stravaPathPoints.push(newPos);
+            stravaPolyline.setLatLngs(stravaPathPoints);
+
+            stravaDistanceMeters += currentPos.distanceTo(newPos);
+            updateStravaHUD();
+        }
+
+        function updateStravaHUD() {
+            document.getElementById('hud-timer').innerText = formatTimer(stravaSeconds);
+            const km = (stravaDistanceMeters / 1000).toFixed(2);
+            document.getElementById('hud-distance').innerHTML = `${km} <span class="text-[10px]">กม.</span>`;
+            
+            const speedKmH = stravaSeconds > 0 ? ((stravaDistanceMeters / stravaSeconds) * 3.6).toFixed(1) : '0.0';
+            document.getElementById('hud-speed').innerHTML = `${speedKmH} <span class="text-[10px]">กม./ชม.</span>`;
+
+            const calories = Math.round(stravaDistanceMeters * 0.055);
+            document.getElementById('hud-calories').innerHTML = `${calories} <span class="text-[10px]">kcal</span>`;
+        }
+
+        function formatTimer(sec) {
+            const hrs = Math.floor(sec / 3600).toString().padStart(2, '0');
+            const mins = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+            const secs = (sec % 60).toString().padStart(2, '0');
+            return `${hrs}:${mins}:${secs}`;
+        }
+
+        function switchTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            
+            // Reset nav button styling
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = 'nav-btn flex flex-col items-center gap-1 py-1 text-slate-400 hover:text-white';
+            });
+
+            // Show target tab
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.getElementById(`nav-${tabId}`).className = 'nav-btn flex flex-col items-center gap-1 py-1 text-blue-400 font-medium';
+
+            // Resize map if switching to map tab
+            if (tabId === 'map' && map) {
+                setTimeout(() => map.invalidateSize(), 150);
+            }
+        }
+
+        function recenterMap() {
+            if (map && userMarker) {
+                map.flyTo(userMarker.getLatLng(), 15, { animate: true });
+            }
+        }
+
+        function calculateRoute() {
+            alert("กำลังคำนวณเส้นทางที่มีประสิทธิภาพสูงสุดจาก Google Maps & BKK Rail...");
+        }
+
+        function selectRouteOption(optionId) {
+            alert(`เลือกเส้นทางตัวเลือกที่ ${optionId} - ระบบเตรียมแจ้งเตือนเมื่อต้องเปลี่ยนสาย`);
+            switchTab('map');
+        }
+
+        function startCountdownTimer() {
+            let totalSeconds = 12 * 60 + 45;
+            setInterval(() => {
+                if (totalSeconds > 0) {
+                    totalSeconds--;
+                    const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+                    const s = (totalSeconds % 60).toString().padStart(2, '0');
+                    const countdownEl = document.getElementById('departure-countdown');
+                    if (countdownEl) countdownEl.innerText = `${m}:${s}`;
+                }
+            }, 1000);
+        }
+
+        function togglePwaModal() {
+            const modal = document.getElementById('pwa-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function toggleVehicleFilterModal() {
+            const modal = document.getElementById('filter-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function toggleVehicleType(type) {
+            activeFilters[type] = !activeFilters[type];
+            vehicles.forEach(v => {
+                if (v.type === type) {
+                    if (activeFilters[type]) {
+                        vehicleMarkers[v.id].addTo(map);
+                    } else {
+                        map.removeLayer(vehicleMarkers[v.id]);
+                    }
+                }
+            });
+        }
+
+        function addNewScheduleItem() {
+            const title = prompt("กรอกหัวข้อนัดหมาย/การเดินทาง:");
+            if (title) {
+                alert(`เพิ่มนัดหมาย "${title}" ลงในตารางเวลาชีวิตเรียบร้อยแล้ว!`);
+            }
+        }
+    </script>
+</body>
+</html>
